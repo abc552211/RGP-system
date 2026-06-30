@@ -329,39 +329,71 @@
             calculatePrescription();
         }
 
-        // 高精度即時演算法（支援手動事後覆寫 BC 與 DIA）
-        function calculatePrescription() {
-            ['od', 'os'].forEach(eye => {
-                const sph = parseFloat(document.getElementById(`${eye}_auto_sph`).value) || 0;
-                const cyl = parseFloat(document.getElementById(`${eye}_auto_cyl`).value) || 0;
-                const axis = parseInt(document.getElementById(`${eye}_auto_axis`).value) || 0;
-                const k1 = parseFloat(document.getElementById(`${eye}_k1`).value) || 0;
-                const or_sph = parseFloat(document.getElementById(`${eye}_or_sph`).value) || 0;
-                
-                // 優先使用輸入框的值（允許手動覆寫調整）
-                const trial_bc = parseFloat(document.getElementById(`${eye}_trial_bc`).value) || k1;
-                const trial_dia = parseFloat(document.getElementById(`${eye}_trial_dia`).value) || 9.2;
-                const lars = parseInt(document.getElementById(`${eye}_lars`).value) || 0;
+        // 重新定義具備臨床「直徑、弧度、度數連動物理效應」的驗配運算核心
+function calculatePrescription() {
+    ['od', 'os'].forEach(eye => {
+        // 1. 讀取基礎電腦驗光與眼鏡處方數據
+        const sph = parseFloat(document.getElementById(`${eye}_auto_sph`).value) || 0;
+        const or_sph = parseFloat(document.getElementById(`${eye}_or_sph`).value) || 0;
+        const k1 = parseFloat(document.getElementById(`${eye}_k1`).value) || 0; // 角膜 Flat K
 
-                let finalResultText = "";
-                
-                if (currentActiveTab === 'RGP_Sphere') {
-                    let vertexCorrection = Math.abs(sph) >= 4.0 ? (sph / (1 - (0.012 * sph)) - sph) : 0;
-                    let finalCalculatedSph = Math.round((sph + or_sph + vertexCorrection) * 4) / 4;
-                    finalResultText = `BC: ${trial_bc.toFixed(2)} / DIA: ${trial_dia.toFixed(2)} / SPH: ${finalCalculatedSph.toFixed(2)}`;
-                
-                } else if (currentActiveTab === 'RGP_Toric') {
-                    finalResultText = `BC1(Flat): ${k1.toFixed(2)} / BC2(Steep): ${(k1 - 0.25).toFixed(2)} / 建議選用低異物感對稱片體驗`;
-                
-                } else if (currentActiveTab === 'Soft') {
-                    let vSph = Math.round((sph / (1 - (0.012 * sph))) * 4) / 4;
-                    let finalAxis = (axis + lars + 180) % 180;
-                    finalResultText = `SPH: ${vSph.toFixed(2)} / CYL: ${cyl.toFixed(2)} / AXIS: ${finalAxis}° (LARS 修正)`;
-                }
+        // 2. 讀取驗光師當下微調的 DIA 與 BC 欄位
+        let current_bc = parseFloat(document.getElementById(`${eye}_trial_bc`).value) || k1;
+        let current_dia = parseFloat(document.getElementById(`${eye}_trial_dia`).value) || 9.2;
 
-                document.getElementById(`${eye}_final_res`).innerText = finalResultText;
-            });
+        // 3. 設定前一動基準點（通常以標準對稱片 DIA 9.2 / BC = K1 為起點進行物理演變比對）
+        const base_dia = 9.2;
+        const base_bc = k1;
+
+        // 【專業連動流程一】：DIA 變更 → 自動連動修正配戴 BC (矢高守恆)
+        // 物理規律：DIA 每大 0.5mm，BC 需放平 (增加) 0.05mm 以維持相同鬆緊度
+        const dia_diff = current_dia - base_dia;
+        if (Math.abs(dia_diff) >= 0.1) {
+            const bc_adjustment = (dia_diff / 0.5) * 0.05;
+            // 連動更新 UI 上的 BC 欄位，讓驗光師看見即時物理變化
+            current_bc = base_bc + bc_adjustment;
+            document.getElementById(`${eye}_trial_bc`).value = current_bc.toFixed(2);
         }
+
+        // 4. 計算頂點距離修正（眼鏡轉隱形眼鏡有效度數，> ±4.00D 補償）
+        let vertexCorrection = Math.abs(sph) >= 4.0 ? (sph / (1 - (0.012 * sph)) - sph) : 0;
+        let base_power = sph + or_sph + vertexCorrection;
+
+        // 【專業連動流程二】：BC 變更 → 自動連動光學度數 POWER (SAM-FAP 淚液透鏡效應)
+        // 物理規律：BC 較角膜 Flat K 每放平 (Flat) 0.05mm，會產生 -0.25D 的淚液鏡，因此鏡片度數需補償 +0.25D
+        const bc_diff = current_bc - k1; // 正值代表放平(Flat)，負值代表變陡(Steep)
+        let tear_lens_compensation = 0;
+        if (Math.abs(bc_diff) >= 0.01) {
+            // 每 0.05mm 補償 0.25D (SAM-FAP)
+            tear_lens_compensation = (bc_diff / 0.05) * 0.25;
+        }
+
+        // 最終總度數 = 基礎度數 + 淚液透鏡光學補償
+        let finalCalculatedSph = base_power + tear_lens_compensation;
+        
+        // 臨床常規：將度數四捨五入至最接近的 0.25D 規格
+        finalCalculatedSph = Math.round(finalCalculatedSph * 4) / 4;
+
+        // 5. 根據目前 TAB 渲染相對應的專業體檢報告字樣
+        let finalResultText = "";
+        if (currentActiveTab === 'RGP_Sphere') {
+            finalResultText = `BC: ${current_bc.toFixed(2)}mm / DIA: ${current_dia.toFixed(2)}mm / POWER: ${finalCalculatedSph >= 0 ? '+' : ''}${finalCalculatedSph.toFixed(2)}D`;
+        } else if (currentActiveTab === 'RGP_Toric') {
+            finalResultText = `BC1(Flat): ${current_bc.toFixed(2)} / BC2(Steep): ${(current_bc - 0.25).toFixed(2)} / DIA: ${current_dia.toFixed(2)}mm (環曲面最佳化幾何)`;
+        } else {
+            // 軟式隱眼無淚液透鏡，回歸單純 LARS 軸度與頂點距離換算
+            const cyl = parseFloat(document.getElementById(`${eye}_auto_cyl`).value) || 0;
+            const axis = parseInt(document.getElementById(`${eye}_auto_axis`).value) || 0;
+            const lars = parseInt(document.getElementById(`${eye}_lars`).value) || 0;
+            let vSph = Math.round((sph / (1 - (0.012 * sph))) * 4) / 4;
+            let finalAxis = (axis + lars + 180) % 180;
+            finalResultText = `SPH: ${vSph.toFixed(2)} / CYL: ${cyl.toFixed(2)} / AXIS: ${finalAxis}° (LARS 修正)`;
+        }
+
+        // 輸出至醫學報告欄位
+        document.getElementById(`${eye}_final_res`).innerText = finalResultText;
+    });
+}
 
         async function loadInventoryData() {
             try {
