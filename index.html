@@ -5,24 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OptoVision 智慧隱形眼鏡驗配系統</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     
     <style>
         :root {
-            --bg-dark: #0f172a;
-            --bg-panel: #1e293b;
-            --border-color: #334155;
-            --neon-blue: #0ea5e9;
-            --neon-green: #10b981;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --od-color: #f59e0b; /* 右眼橘黃 */
-            --os-color: #a855f7; /* 左眼紫 */
+            /* 現代醫療明亮配色 */
+            --bg-main: #f1f5f9;
+            --bg-panel: #ffffff;
+            --border-color: #cbd5e1;
+            --primary-blue: #0284c7;
+            --primary-green: #059669;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --od-color: #ea580c; /* 右眼：專業橘 */
+            --os-color: #7c3aed; /* 左眼：專業紫 */
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            background-color: var(--bg-dark);
+            background-color: var(--bg-main);
             color: var(--text-main);
             font-family: 'Noto Sans TC', sans-serif;
             padding: 20px;
@@ -38,57 +42,65 @@
             margin-bottom: 20px;
         }
         .logo {
-            font-family: 'Orbitron', sans-serif;
             font-size: 24px;
             font-weight: 700;
-            color: var(--neon-blue);
-            text-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+            color: var(--primary-blue);
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         .main-tabs {
             display: flex;
             gap: 10px;
         }
         .tab-btn {
-            background: #020617;
+            background: var(--bg-panel);
             border: 1px solid var(--border-color);
             color: var(--text-muted);
             padding: 10px 24px;
             cursor: pointer;
-            border-radius: 4px;
+            border-radius: 6px;
             font-weight: bold;
-            transition: all 0.3s;
+            transition: all 0.2s;
+            box-shadow: var(--shadow-sm);
         }
+        .tab-btn:hover { background: #f8fafc; }
         .tab-btn.active {
-            border-color: var(--neon-blue);
-            color: var(--neon-blue);
-            box-shadow: 0 0 10px rgba(14, 165, 233, 0.2);
+            background: var(--primary-blue);
+            border-color: var(--primary-blue);
+            color: white;
         }
 
         /* 客戶基本資料列 */
         .customer-bar {
             background: var(--bg-panel);
             border: 1px solid var(--border-color);
-            border-left: 4px solid var(--neon-green);
-            padding: 15px;
-            border-radius: 4px;
+            border-left: 5px solid var(--primary-green);
+            padding: 20px;
+            border-radius: 8px;
             display: flex;
-            gap: 20px;
+            gap: 25px;
             margin-bottom: 20px;
             align-items: center;
+            box-shadow: var(--shadow-sm);
         }
         .customer-bar input {
-            background: #020617;
             border: 1px solid var(--border-color);
-            color: white;
-            padding: 6px 10px;
-            border-radius: 4px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .customer-bar input:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
         }
 
         /* 核心：雙眼並列佈局 */
         .eyes-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 24px;
         }
         @media (max-width: 1024px) {
             .eyes-container { grid-template-columns: 1fr; }
@@ -97,25 +109,23 @@
         .eye-panel {
             background: var(--bg-panel);
             border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 20px;
-            position: relative;
-            overflow: hidden;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: var(--shadow-sm);
         }
-        .eye-panel.od { border-top: 4px solid var(--od-color); }
-        .eye-panel.os { border-top: 4px solid var(--os-color); }
+        .eye-panel.od { border-top: 5px solid var(--od-color); }
+        .eye-panel.os { border-top: 5px solid var(--os-color); }
 
         .eye-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 15px;
         }
         .eye-title {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
         }
         .od .eye-title { color: var(--od-color); }
@@ -123,62 +133,70 @@
 
         /* 區塊與表單排版 */
         .section-title {
-            font-size: 14px;
-            color: var(--text-muted);
-            margin: 15px 0 8px 0;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 20px 0 10px 0;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 8px;
         }
+        .section-title i { color: var(--primary-blue); }
+        
         .grid-inputs {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
+            gap: 15px;
         }
         .input-group {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 6px;
         }
         .input-group label {
-            font-size: 12px;
+            font-size: 13px;
+            font-weight: 500;
             color: var(--text-muted);
         }
         .input-group input, .input-group select {
-            background: #020617;
             border: 1px solid var(--border-color);
-            color: white;
-            padding: 8px;
-            border-radius: 4px;
-            font-family: 'Orbitron', sans-serif;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #f8fafc;
         }
-        .input-group input:focus {
-            border-color: var(--neon-blue);
+        .input-group input:focus, .input-group select:focus {
             outline: none;
+            border-color: var(--primary-blue);
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
         }
 
         /* 智慧推薦與輸出面板 */
         .result-box {
-            background: rgba(2, 6, 23, 0.6);
-            border: 1px dashed var(--border-color);
-            padding: 15px;
-            margin-top: 15px;
-            border-radius: 4px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            padding: 20px;
+            margin-top: 25px;
+            border-radius: 8px;
         }
         .result-box h4 {
-            font-size: 14px;
-            color: var(--neon-green);
-            margin-bottom: 10px;
+            font-size: 15px;
+            color: var(--primary-green);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         .prescription-badge {
             display: inline-block;
-            background: #020617;
-            border: 1px solid var(--neon-green);
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 14px;
-            color: var(--neon-green);
+            background: #ffffff;
+            border: 1px solid var(--primary-green);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--primary-green);
         }
 
         /* 功能按鈕 */
@@ -188,40 +206,51 @@
             justify-content: flex-end;
             gap: 15px;
             margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
         }
         .btn {
-            background: var(--neon-blue);
             color: white;
             border: none;
             padding: 12px 24px;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 700;
+            font-size: 15px;
             display: flex;
             align-items: center;
             gap: 8px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s;
         }
-        .btn-success { background: var(--neon-green); }
+        .btn:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+        .btn-secondary { background: #64748b; }
+        .btn-secondary:hover { background: #475569; }
+        .btn-success { background: var(--primary-green); }
+        .btn-success:hover { background: #047857; }
+        .btn-primary { background: var(--primary-blue); }
+        .btn-primary:hover { background: #0369a1; }
     </style>
 </head>
 <body>
 
     <header>
-        <div class="logo"><i class="fa-solid fa-circle-nodes"></i> OPTOVISION v1.0</div>
+        <div class="logo"><i class="fa-solid fa-notes-medical"></i> OptoVision System</div>
         <div class="main-tabs">
-            <button class="tab-btn active" onclick="switchTab('RGP_Sphere')"><i class="fa-solid fa-eye-dropper"></i> 硬式對稱鏡片</button>
-            <button class="tab-btn" onclick="switchTab('RGP_Toric')"><i class="fa-solid fa-circle-dot"></i> 硬式環曲面 (Toric)</button>
-            <button class="tab-btn" onclick="switchTab('Soft')"><i class="fa-solid fa-droplet"></i> 軟式隱眼驗配</button>
+            <button class="tab-btn active" onclick="switchTab('RGP_Sphere', this)"><i class="fa-solid fa-eye-dropper"></i> 硬式對稱</button>
+            <button class="tab-btn" onclick="switchTab('RGP_Toric', this)"><i class="fa-solid fa-circle-dot"></i> 硬式環曲 (Toric)</button>
+            <button class="tab-btn" onclick="switchTab('Soft', this)"><i class="fa-solid fa-droplet"></i> 軟式驗配</button>
         </div>
     </header>
 
     <div class="customer-bar">
         <div class="input-group" style="flex-direction:row; align-items:center;">
-            <label><i class="fa-solid fa-user"></i> 客戶姓名：</label>
+            <label><i class="fa-solid fa-user"></i> 姓名：</label>
             <input type="text" id="cust_name" placeholder="請輸入姓名">
         </div>
         <div class="input-group" style="flex-direction:row; align-items:center;">
-            <label><i class="fa-solid fa-phone"></i> 手機號碼：</label>
+            <label><i class="fa-solid fa-phone"></i> 手機：</label>
             <input type="tel" id="cust_phone" placeholder="09xxxxxxxx">
         </div>
         <div class="input-group" style="flex-direction:row; align-items:center;">
@@ -234,104 +263,136 @@
         
         <div class="eye-panel od">
             <div class="eye-header">
-                <span class="eye-title"><i class="fa-solid fa-r"></i> RIGHT EYE (OD)</span>
-                <i class="fa-solid fa-circle-info text-muted"></i>
+                <span class="eye-title"><i class="fa-solid fa-r"></i> 右眼 (OD)</span>
             </div>
 
-            <div class="section-title"><i class="fa-solid fa-laptop"></i> AUTO 電腦驗光數據</div>
+            <div class="section-title"><i class="fa-solid fa-laptop-medical"></i> 電腦驗光數據 (AUTO)</div>
             <div class="grid-inputs">
                 <div class="input-group"><label>SPH (球面)</label><input type="number" step="0.25" placeholder="-0.00"></div>
                 <div class="input-group"><label>CYL (散光)</label><input type="number" step="0.25" placeholder="-0.00"></div>
                 <div class="input-group"><label>AXIS (軸度)</label><input type="number" placeholder="0"></div>
             </div>
-            <div class="grid-inputs" style="margin-top: 10px;">
+            <div class="grid-inputs" style="margin-top: 15px;">
                 <div class="input-group"><label>K1 (平坦)</label><input type="number" step="0.01" placeholder="mm / D"></div>
                 <div class="input-group"><label>K2 (陡峭)</label><input type="number" step="0.01" placeholder="mm / D"></div>
-                <div class="input-group"><label>眼鏡最終處方 (過渡用)</label><input type="number" step="0.25" placeholder="SPH"></div>
+                <div class="input-group"><label>眼鏡最終 SPH</label><input type="number" step="0.25" placeholder="-0.00"></div>
             </div>
 
-            <div class="section-title"><i class="fa-solid fa-box-open"></i> 現場試戴鏡片比對</div>
+            <div class="section-title"><i class="fa-solid fa-box-open"></i> 試戴鏡片比對</div>
             <div class="grid-inputs">
-                <div class="input-group">
-                    <label>選用試戴片</label>
-                    <select>
-                        <option>-- 自動匹配最接近試戴片 --</option>
-                    </select>
+                <div class="input-group" style="grid-column: span 3;">
+                    <label>選用庫存試戴片</label>
+                    <select><option>-- 自動匹配最接近試戴片 --</option></select>
                 </div>
-                <div class="input-group"><label>調整後基弧 BC</label><input type="number" step="0.05" placeholder="0.00"></div>
-                <div class="input-group"><label>調整後直徑 DIA</label><input type="number" step="0.1" placeholder="0.0"></div>
-            </div>
-
-            <div class="section-title"><i class="fa-solid fa-calculator"></i> 戴鏡驗光 (OR) 與 軟式刻線</div>
-            <div class="grid-inputs">
-                <div class="input-group"><label>OR SPH</label><input type="number" step="0.25" placeholder="0.00"></div>
-                <div class="input-group"><label>LARS 偏轉角度(軟式)</label><input type="number" placeholder="0°"></div>
-                <div class="input-group"><label>備註/評估狀態(JSON)</label><input type="text" placeholder="定位/滑動度"></div>
+                <div class="input-group"><label>微調 BC</label><input type="number" step="0.05" placeholder="0.00"></div>
+                <div class="input-group"><label>微調 DIA</label><input type="number" step="0.1" placeholder="0.0"></div>
+                <div class="input-group"><label>OR (戴鏡驗光)</label><input type="number" step="0.25" placeholder="-0.00"></div>
             </div>
 
             <div class="result-box">
-                <h4><i class="fa-solid fa-wand-magic-sparkles"></i> 系統動態建議處方</h4>
+                <h4><i class="fa-solid fa-check-circle"></i> 建議處方 (OD)</h4>
                 <div class="prescription-badge">BC: -- / DIA: -- / SPH: --</div>
             </div>
         </div>
 
         <div class="eye-panel os">
             <div class="eye-header">
-                <span class="eye-title"><i class="fa-solid fa-l"></i> LEFT EYE (OS)</span>
-                <i class="fa-solid fa-circle-info text-muted"></i>
+                <span class="eye-title"><i class="fa-solid fa-l"></i> 左眼 (OS)</span>
             </div>
 
-            <div class="section-title"><i class="fa-solid fa-laptop"></i> AUTO 電腦驗光數據</div>
+            <div class="section-title"><i class="fa-solid fa-laptop-medical"></i> 電腦驗光數據 (AUTO)</div>
             <div class="grid-inputs">
                 <div class="input-group"><label>SPH (球面)</label><input type="number" step="0.25" placeholder="-0.00"></div>
                 <div class="input-group"><label>CYL (散光)</label><input type="number" step="0.25" placeholder="-0.00"></div>
                 <div class="input-group"><label>AXIS (軸度)</label><input type="number" placeholder="0"></div>
             </div>
-            <div class="grid-inputs" style="margin-top: 10px;">
+            <div class="grid-inputs" style="margin-top: 15px;">
                 <div class="input-group"><label>K1 (平坦)</label><input type="number" step="0.01" placeholder="mm / D"></div>
                 <div class="input-group"><label>K2 (陡峭)</label><input type="number" step="0.01" placeholder="mm / D"></div>
-                <div class="input-group"><label>眼鏡最終處方 (過渡用)</label><input type="number" step="0.25" placeholder="SPH"></div>
+                <div class="input-group"><label>眼鏡最終 SPH</label><input type="number" step="0.25" placeholder="-0.00"></div>
             </div>
 
-            <div class="section-title"><i class="fa-solid fa-box-open"></i> 現場試戴鏡片比對</div>
+            <div class="section-title"><i class="fa-solid fa-box-open"></i> 試戴鏡片比對</div>
             <div class="grid-inputs">
-                <div class="input-group">
-                    <label>選用試戴片</label>
-                    <select>
-                        <option>-- 自動匹配最接近試戴片 --</option>
-                    </select>
+                <div class="input-group" style="grid-column: span 3;">
+                    <label>選用庫存試戴片</label>
+                    <select><option>-- 自動匹配最接近試戴片 --</option></select>
                 </div>
-                <div class="input-group"><label>調整後基弧 BC</label><input type="number" step="0.05" placeholder="0.00"></div>
-                <div class="input-group"><label>調整後直徑 DIA</label><input type="number" step="0.1" placeholder="0.0"></div>
-            </div>
-
-            <div class="section-title"><i class="fa-solid fa-calculator"></i> 戴鏡驗光 (OR) 與 軟式刻線</div>
-            <div class="grid-inputs">
-                <div class="input-group"><label>OR SPH</label><input type="number" step="0.25" placeholder="0.00"></div>
-                <div class="input-group"><label>LARS 偏轉角度(軟式)</label><input type="number" placeholder="0°"></div>
-                <div class="input-group"><label>備註/評估狀態(JSON)</label><input type="text" placeholder="定位/滑動度"></div>
+                <div class="input-group"><label>微調 BC</label><input type="number" step="0.05" placeholder="0.00"></div>
+                <div class="input-group"><label>微調 DIA</label><input type="number" step="0.1" placeholder="0.0"></div>
+                <div class="input-group"><label>OR (戴鏡驗光)</label><input type="number" step="0.25" placeholder="-0.00"></div>
             </div>
 
             <div class="result-box">
-                <h4><i class="fa-solid fa-wand-magic-sparkles"></i> 系統動態建議處方</h4>
+                <h4><i class="fa-solid fa-check-circle"></i> 建議處方 (OS)</h4>
                 <div class="prescription-badge">BC: -- / DIA: -- / SPH: --</div>
             </div>
         </div>
 
         <div class="action-bar">
-            <button class="btn" style="background:#475569;"><i class="fa-solid fa-gear"></i> 管理試戴片庫</button>
-            <button class="btn btn-success"><i class="fa-solid fa-cloud-arrow-up"></i> 儲存至 Supabase</button>
-            <button class="btn"><i class="fa-solid fa-file-pdf"></i> 輸出驗配 PDF 報告</button>
+            <button class="btn btn-secondary" onclick="handleInventory()"><i class="fa-solid fa-database"></i> 試戴片庫管理</button>
+            <button class="btn btn-primary" onclick="generatePDF()"><i class="fa-solid fa-file-pdf"></i> 輸出 PDF 報告</button>
+            <button class="btn btn-success" onclick="saveData()"><i class="fa-solid fa-cloud-arrow-up"></i> 儲存至 Supabase</button>
         </div>
     </div>
 
     <script>
-        // 切換硬式對稱/硬式Toric/軟式頁籤的控制邏輯
-        function switchTab(type) {
+        // 1. 初始化 Supabase 
+        const supabaseUrl = 'https://pyyszbkcemqvmrecokwt.supabase.co';
+        const supabaseKey = 'sb_publishable_kVgIy7INN2ohTMbsdh7PZg_TWG4LH7p';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // 2. 切換驗配類型 Tab
+        let currentFitType = 'RGP_Sphere';
+        function switchTab(type, element) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-            console.log("目前驗配切換至:", type);
-            // 這裡日後可以綁定動態切換表單欄位的顯示與隱藏
+            element.classList.add('active');
+            currentFitType = type;
+            console.log("目前驗配模式切換為:", type);
+            // 未來可在此加入顯示/隱藏特定欄位的邏輯 (如軟式專用 LARS 欄位)
+        }
+
+        // 3. 綁定按鈕：寫入 Supabase 測試
+        async function saveData() {
+            const name = document.getElementById('cust_name').value;
+            const phone = document.getElementById('cust_phone').value;
+            const birthday = document.getElementById('cust_birthday').value;
+
+            if(!name || !phone || !birthday) {
+                alert('請先填寫上方完整的客戶姓名、手機與生日。');
+                return;
+            }
+
+            try {
+                // 測試將客戶資料寫入 customers 資料表
+                const { data, error } = await supabase
+                    .from('customers')
+                    .insert([{ 
+                        name: name, 
+                        phone: phone, 
+                        birthday: birthday 
+                    }])
+                    .select(); // 取得剛新增的資料
+
+                if (error) throw error;
+                
+                console.log("寫入成功：", data);
+                alert(`✅ 儲存成功！\n客戶 ${name} 的資料已同步至 Supabase。`);
+                
+            } catch (err) {
+                console.error("Supabase 寫入錯誤：", err);
+                alert(`❌ 儲存失敗！\n錯誤訊息：${err.message}\n請確認 Supabase 資料表的 RLS (資料列級安全性) 權限是否已設定為允許新增。`);
+            }
+        }
+
+        // 4. 綁定按鈕：試戴片庫
+        function handleInventory() {
+            alert('即將開啟：試戴片庫存管理系統面板\n(將透過 Supabase 讀取 trial_lenses 資料表)');
+        }
+
+        // 5. 綁定按鈕：輸出 PDF
+        function generatePDF() {
+            alert('即將執行：產生 PDF 驗光報告\n(下一步將引入 html2pdf.js 來將雙眼處方畫面轉出)');
         }
     </script>
 </body>
