@@ -50,7 +50,7 @@
         /* 報告抬頭區 */
         .report-title-section { text-align: center; margin-bottom: 30px; border-bottom: 2px solid var(--slate-100); padding-bottom: 20px; }
         .report-main-h1 { font-size: 28px; font-weight: 700; color: var(--slate-900); letter-spacing: 1px; }
-        .report-sub-meta { font-size: 13px; color: var(--text-muted); margin-top: 5px; text-transform: uppercase; letter-spacing: 1.5px; }
+        .report-sub-meta { font-size: 13px; color: var(--slate-700); margin-top: 5px; text-transform: uppercase; letter-spacing: 1.5px; }
 
         /* 患者健檢基本資料欄位 */
         .patient-info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; background: var(--slate-50); padding: 20px; border-radius: 12px; border: 1px solid var(--slate-200); }
@@ -77,7 +77,7 @@
         .input-row-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
         
         .unit-input-wrapper { display: flex; flex-direction: column; gap: 4px; }
-        .unit-input-wrapper label { font-size: 11px; color: var(--text-muted); }
+        .unit-input-wrapper label { font-size: 11px; color: var(--slate-700); }
         .unit-input-wrapper input, .unit-input-wrapper select { width: 100%; border: 1px solid var(--slate-200); padding: 8px; border-radius: 6px; font-size: 13px; background: var(--slate-50); }
         .unit-input-wrapper input:focus { background: #ffffff; outline: none; border-color: var(--clinical-blue); }
 
@@ -96,7 +96,7 @@
         .btn-slate { background: #475569; color: white; }
         .btn-blue { background: var(--clinical-blue); color: white; }
         .btn-teal { background: var(--clinical-teal); color: white; }
-        .btn-danger { background: #dc2626; color: white; padding: 4px 8px; font-size: 11px; border-radius: 4px; }
+        .btn-danger { background: #dc2626; color: white; padding: 4px 8px; font-size: 11px; border-radius: 4px; border:none; cursor: pointer; }
 
         #sys-status-bar { max-width: 1000px; margin: 15px auto 0 auto; padding: 12px; border-radius: 8px; display: none; font-weight: bold; text-align: center; font-size: 14px; }
         .status-ok { background: #d1fae5; color: #065f46; border: 1px solid #10b981; }
@@ -104,7 +104,7 @@
 
         /* 試戴片視窗 */
         .clinical-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.3); display: none; justify-content: center; align-items: center; z-index: 2000; }
-        .modal-body { background: white; padding: 30px; border-radius: 12px; width: 750px; max-height: 80vh; overflow-y: auto; border: 1px solid var(--slate-200); box-shadow: 0 20px 45px rgba(0,0,0,0.08); }
+        .modal-body { background: white; padding: 30px; border-radius: 12px; width: 800px; max-height: 80vh; overflow-y: auto; border: 1px solid var(--slate-200); box-shadow: 0 20px 45px rgba(0,0,0,0.08); }
         
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
         th, td { border: 1px solid var(--slate-200); padding: 10px; text-align: center; }
@@ -280,12 +280,15 @@
                 <div class="unit-input-wrapper"><label>基弧 BC</label><input type="number" step="0.05" id="m_bc" value="7.70"></div>
                 <div class="unit-input-wrapper"><label>直徑 DIA</label><input type="number" step="0.1" id="m_dia" value="9.2"></div>
                 <div class="unit-input-wrapper"><label>度數 SPH</label><input type="number" step="0.25" id="m_sph" value="-3.00"></div>
+                <div class="unit-input-wrapper"><label>散光度 CYL</label><input type="number" step="0.25" id="m_cyl" value="0.00"></div>
                 <div class="unit-input-wrapper"><label>廠牌系列</label><input type="text" id="m_brand" value="亨泰"></div>
-                <div class="unit-input-wrapper" style="justify-content: flex-end; display: flex;"><button class="action-btn btn-teal" style="padding: 8px;" onclick="saveNewLens()">新增入庫</button></div>
+                <div class="unit-input-wrapper" style="justify-content: flex-end; display: flex; grid-column: span 6; margin-top: 5px;">
+                    <button class="action-btn btn-teal" style="padding: 10px 20px;" onclick="saveNewLens()">確認新增入庫</button>
+                </div>
             </div>
             
             <table style="margin-top: 20px;">
-                <thead><tr><th>類型</th><th>廠牌</th><th>BC</th><th>DIA</th><th>SPH</th><th>管理</th></tr></thead>
+                <thead><tr><th>類型</th><th>廠牌</th><th>BC</th><th>DIA</th><th>SPH</th><th>CYL</th><th>管理</th></tr></thead>
                 <tbody id="lens-table-body"></tbody>
             </table>
             <div class="control-dock" style="margin-top: 20px;"><button class="action-btn btn-slate" onclick="closeInventory()">關閉片庫選單</button></div>
@@ -326,7 +329,7 @@
             calculatePrescription();
         }
 
-        // 核心高精度處方演算法 (結合：自動匹配、手動事後調整修正、頂點距離換算)
+        // 高精度即時演算法（支援手動事後覆寫 BC 與 DIA）
         function calculatePrescription() {
             ['od', 'os'].forEach(eye => {
                 const sph = parseFloat(document.getElementById(`${eye}_auto_sph`).value) || 0;
@@ -335,7 +338,7 @@
                 const k1 = parseFloat(document.getElementById(`${eye}_k1`).value) || 0;
                 const or_sph = parseFloat(document.getElementById(`${eye}_or_sph`).value) || 0;
                 
-                // 優先抓取手動調整輸入框的數值，即使自動挑片後也能自由更改
+                // 優先使用輸入框的值（允許手動覆寫調整）
                 const trial_bc = parseFloat(document.getElementById(`${eye}_trial_bc`).value) || k1;
                 const trial_dia = parseFloat(document.getElementById(`${eye}_trial_dia`).value) || 9.2;
                 const lars = parseInt(document.getElementById(`${eye}_lars`).value) || 0;
@@ -343,17 +346,14 @@
                 let finalResultText = "";
                 
                 if (currentActiveTab === 'RGP_Sphere') {
-                    // 頂點距離修正量 (度數 >= ±4.00D 觸發 12mm 換算)
                     let vertexCorrection = Math.abs(sph) >= 4.0 ? (sph / (1 - (0.012 * sph)) - sph) : 0;
                     let finalCalculatedSph = Math.round((sph + or_sph + vertexCorrection) * 4) / 4;
                     finalResultText = `BC: ${trial_bc.toFixed(2)} / DIA: ${trial_dia.toFixed(2)} / SPH: ${finalCalculatedSph.toFixed(2)}`;
                 
                 } else if (currentActiveTab === 'RGP_Toric') {
-                    // 環曲面生成：直接產出平坦軸與陡峭軸的最佳對稱化基弧配置
                     finalResultText = `BC1(Flat): ${k1.toFixed(2)} / BC2(Steep): ${(k1 - 0.25).toFixed(2)} / 建議選用低異物感對稱片體驗`;
                 
                 } else if (currentActiveTab === 'Soft') {
-                    // 軟式隱眼：頂點換算與 LARS 散光片刻線補償機制 (左加右減)
                     let vSph = Math.round((sph / (1 - (0.012 * sph))) * 4) / 4;
                     let finalAxis = (axis + lars + 180) % 180;
                     finalResultText = `SPH: ${vSph.toFixed(2)} / CYL: ${cyl.toFixed(2)} / AXIS: ${finalAxis}° (LARS 修正)`;
@@ -365,14 +365,14 @@
 
         async function loadInventoryData() {
             try {
-                const { data } = await _supabase.from('trial_lenses').select('*');
+                const { data, error } = await _supabase.from('trial_lenses').select('*');
+                if (error) throw error;
                 globalTrialLenses = data || [];
                 filterTrialOptions();
                 renderInventoryTable();
-            } catch (err) { console.error(err); }
+            } catch (err) { console.error("片庫讀取異常：", err); }
         }
 
-        // 自動在庫試戴片媒合推薦
         function filterTrialOptions() {
             ['od', 'os'].forEach(eye => {
                 const select = document.getElementById(`${eye}_trial_select`);
@@ -392,7 +392,6 @@
             const select = document.getElementById(`${eye}_trial_select`);
             if(!select.value) return;
             const lens = JSON.parse(select.value);
-            // 填入後，下方手動微調格仍維持解鎖狀態，驗光師可自由再微調
             document.getElementById(`${eye}_trial_bc`).value = lens.bc;
             document.getElementById(`${eye}_trial_dia`).value = lens.dia;
             calculatePrescription();
@@ -406,31 +405,45 @@
             tbody.innerHTML = '';
             globalTrialLenses.forEach(lens => {
                 tbody.innerHTML += `<tr>
-                    <td>${lens.lens_type}</td><td>${lens.brand || ''}</td><td>${lens.bc}</td><td>${lens.dia}</td><td>${lens.sph}</td>
+                    <td>${lens.lens_type}</td><td>${lens.brand || ''}</td><td>${lens.bc}</td><td>${lens.dia}</td><td>${lens.sph}</td><td>${lens.cyl || 0}</td>
                     <td><button class="btn-danger" onclick="deleteLens('${lens.id}')">移除</button></td>
                 </tr>`;
             });
         }
 
+        // 精準填入庫存必需的 cyl 與 axis，防止 Supabase RLS 或資料表結構約束報錯
         async function saveNewLens() {
             const lensData = {
                 lens_type: document.getElementById('m_type').value,
-                bc: parseFloat(document.getElementById('m_bc').value),
-                dia: parseFloat(document.getElementById('m_dia').value),
-                sph: parseFloat(document.getElementById('m_sph').value),
-                brand: document.getElementById('m_brand').value
+                bc: parseFloat(document.getElementById('m_bc').value) || 0,
+                dia: parseFloat(document.getElementById('m_dia').value) || 0,
+                sph: parseFloat(document.getElementById('m_sph').value) || 0,
+                cyl: parseFloat(document.getElementById('m_cyl').value) || 0,
+                axis: 0, // 補齊資料表預設欄位
+                brand: document.getElementById('m_brand').value || '未分類'
             };
-            await _supabase.from('trial_lenses').insert([lensData]);
-            loadInventoryData();
+
+            try {
+                const { data, error } = await _supabase.from('trial_lenses').insert([lensData]).select();
+                if (error) throw error;
+                
+                alert('🎉 試戴片规格成功入庫！');
+                loadInventoryData();
+            } catch (err) {
+                console.error("入庫失敗完整日誌：", err);
+                alert(`❌ 入庫失敗！請檢查此原因：\n${err.message || err.details}`);
+            }
         }
 
         async function deleteLens(id) {
             if(!confirm('確定自雲端庫存移除此試戴片？')) return;
-            await _supabase.from('trial_lenses').delete().eq('id', id);
-            loadInventoryData();
+            try {
+                const { error } = await _supabase.from('trial_lenses').delete().eq('id', id);
+                if (error) throw error;
+                loadInventoryData();
+            } catch(err) { alert('移除失敗：' + err.message); }
         }
 
-        // 上傳封存
         async function uploadData() {
             const name = document.getElementById('cust_name').value.trim();
             const phone = document.getElementById('cust_phone').value.trim();
@@ -455,7 +468,6 @@
             } catch (err) { bar.className = 'status-err'; bar.innerText = err.message; }
         }
 
-        // 歷史調閱調用
         async function searchAndRetrievePatient() {
             const name = document.getElementById('cust_name').value.trim();
             const phone = document.getElementById('cust_phone').value.trim();
@@ -486,7 +498,6 @@
             } catch(e) { alert(e.message); }
         }
 
-        // 防溢出體檢報告 PDF 輸出
         function exportPDF() {
             const element = document.getElementById('clinical-report-card');
             const name = document.getElementById('cust_name').value || '匿名患者';
