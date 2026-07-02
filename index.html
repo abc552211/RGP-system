@@ -626,6 +626,17 @@
       if(view === 'crm') { eyeSelector.classList.add('hidden'); } 
       else { eyeSelector.classList.remove('hidden'); updateWorkspaceColor(); restoreInputsAndResultsFromSession(); }
     }
+    // 1. 取得當前選擇的眼別 (OD 或 OS)
+function getSelectedEye() {
+  const selected = document.querySelector('input[name="eye"]:checked');
+  return selected ? selected.value : 'OD'; // 預設返回右眼
+}
+
+// 2. 清空指定 Tab 的輸入框與結果 (提供空函數或基礎邏輯以避免報錯)
+function clearInputsAndResultsOfTab(type) {
+  // 如果你暫時不需要清空畫面邏輯，只要保留這個空函數，切換功能就不會當機
+  // 若有需要，可以後續再將清空各 input 的邏輯寫在這裡
+}
 
     function setActiveCustomer(id, name) { activeCustomer = { id, name }; document.getElementById('active-customer-name').innerText = name; }
     async function addCustomer() {
