@@ -349,17 +349,12 @@
     </div>
 
     <!-- 警語與簽章落款區 -->
-    <div style="margin-top: 20px; border-top: 1px solid #94a3b8; padding-top: 10px; display: flex; justify-content: space-between; align-items: flex-start;">
-      <div style="font-size: 11px;; color: #475569; max-width: 70%; line-height: 1.5; font-style: italic;">
-        ⚠️ <b>臨床法律免責聲明公告：</b><br>
-        本處方單數據僅供本體系之內部學術研討、試戴評估與特約合作商號進行鏡片訂製加工參考使用，非屬醫療法與驗光人員法所定義之正式驗光所醫療診斷處方。本所不對任何於非特約或未授權場所進行之鏡片配製、不當使用或衍生之臨床責任承擔任何形式之第三方擔保責任。鏡片配戴後請定期接受眼科醫師追蹤檢查。
+    <div style="font-size: 9px; color: #475569; max-width: 75%; line-height: 1.6; text-align: justify;">
+        <span style="font-size: 10px; font-weight: bold; color: #334155;">⚠️ 臨床免責與使用限制聲明：</span><br>
+        <b>1. 文書性質：</b>本數據僅供特約合作單位之內部試戴評估與鏡片訂製參考，非屬《驗光人員法》或《醫師法》所定義之正式驗光處方或醫療診斷報告書。<br>
+        <b>2. 擔保範圍：</b>本單位僅對「特約合作單位所提供之專屬醫療器材（隱形眼鏡）」進行參數配置之數據擔保。各廠牌鏡片之幾何設計與材質均不相同，本數據不得跨品牌直接套用。<br>
+        <b>3. 責任排除：</b>本報告明令禁止上述約定範圍外之任何用途。若持本數據於非特約授權場所、網路平台進行鏡片配製或購買，本單位概不負任何形式之法律與臨床醫療責任。配戴後請定期由眼科醫師進行追蹤檢查。
       </div>
-      <div style="display: flex; align-items: center; gap: 8px; margin-right: 15px;">
-        <p style="margin: 0; font-size: 10px; font-weight: bold; color: #94a3b8; text-align: right; line-height: 1.3;">驗光人員<br>簽章處</p>
-        <!-- 蓋章方形虛線框 -->
-        <div style="width: 70px; height: 70px; border: 1px dashed #94a3b8; border-radius: 6px;"></div>
-      </div>
-    </div>
   </div>
 
   <script>
@@ -783,9 +778,11 @@ function clearInputsAndResultsOfTab(type) {
             </div>
           </div>
           <!-- 法律警語與蓋章預覽 -->
-          <div class="border-t pt-3 flex justify-between items-start text-[10px] text-slate-500 italic">
-            <div class="max-w-[70%]">
-              ⚠️ <b>臨床法律免責聲明：</b>本處方數據僅供內部研討與特約授權工廠鏡片訂製參考，非屬正式驗光所醫療診斷處方。
+          <div class="max-w-[75%] space-y-1 text-justify">
+              <p class="font-bold text-slate-600 text-[11px] mb-1">⚠️ 臨床免責與使用限制聲明：</p>
+              <p><b>1. 文書性質：</b>本單僅供特約合作單位內部參考，非屬法規定義之正式驗光處方或醫療報告書。</p>
+              <p><b>2. 擔保範圍：</b>本單位僅對「特約合作商提供之專屬器材」進行數據擔保，參數嚴禁跨品牌套用。</p>
+              <p><b>3. 責任排除：</b>嚴禁上述範圍外之用途。若於非特約場所配製或購買，本單位概不負責。請定期由眼科醫師追蹤。</p>
             </div>
             <div class="flex items-center gap-2">
               <p class="font-bold text-slate-400 text-[10px] text-right leading-tight">驗光人員<br>簽章處</p>
