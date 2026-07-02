@@ -39,189 +39,186 @@
       <label class="font-bold flex items-center gap-2 cursor-pointer text-emerald-600 text-lg">
         <input type="radio" name="eye" value="OD" checked class="w-5 h-5 accent-emerald-600"> 右眼 (OD)
       </label>
-      <label class="font-bold flex items-center gap-2 cursor-pointer text-sky-600 text-lg">
-        <input type="radio" name="eye" value="OS" class="w-5 h-5 accent-sky-600"> 左眼 (OS)
+      <label class="font-bold flex items-center gap-2 cursor-pointer text-blue-600 text-lg">
+        <input type="radio" name="eye" value="OS" class="w-5 h-5 accent-blue-600"> 左眼 (OS)
       </label>
     </div>
 
-    <div class="hidden bg-emerald-50 bg-sky-50 bg-white"></div>
+    <div class="hidden bg-emerald-100 bg-blue-100 bg-white border-emerald-500 border-blue-500 text-emerald-900 text-blue-900"></div>
 
-    <div id="workspace" class="bg-emerald-50 rounded-xl transition-colors duration-300">
-      
-      <div id="view-crm" class="view-content active max-w-5xl mx-auto">
-        <h2 class="text-2xl font-bold mb-6 text-gray-800">客戶管理 (CRM)</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="bg-white p-6 rounded-lg shadow-sm border h-fit">
-            <h3 class="font-bold text-lg mb-4 text-blue-800">新增客戶</h3>
-            <div class="space-y-3">
-              <input type="text" id="crm-name" placeholder="姓名" class="w-full border p-3 rounded bg-gray-50 focus:bg-white">
-              <input type="text" id="crm-phone" placeholder="電話" class="w-full border p-3 rounded bg-gray-50 focus:bg-white">
-              <input type="date" id="crm-dob" class="w-full border p-3 rounded bg-gray-50 focus:bg-white">
-              <button onclick="addCustomer()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 shadow-md">建立資料</button>
-            </div>
+    <div id="view-crm" class="view-content active max-w-5xl mx-auto">
+      <h2 class="text-2xl font-bold mb-6 text-gray-800">客戶管理 (CRM)</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-lg shadow-sm border h-fit">
+          <h3 class="font-bold text-lg mb-4 text-blue-800">新增客戶</h3>
+          <div class="space-y-3">
+            <input type="text" id="crm-name" placeholder="姓名" class="w-full border p-3 rounded bg-gray-50 focus:bg-white">
+            <input type="text" id="crm-phone" placeholder="電話" class="w-full border p-3 rounded bg-gray-50 focus:bg-white">
+            <input type="date" id="crm-dob" class="w-full border p-3 rounded bg-gray-50 focus:bg-white">
+            <button onclick="addCustomer()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 shadow-md">建立資料</button>
+          </div>
+        </div>
+        
+        <div class="bg-white p-6 rounded-lg shadow-sm border md:col-span-2">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-lg text-blue-800">客戶列表</h3>
+            <input type="text" id="crm-search" placeholder="🔍 搜尋姓名或電話..." class="border p-2 rounded w-1/2 bg-gray-50" oninput="renderCustomers()">
+          </div>
+          <div class="overflow-y-auto max-h-64 border rounded">
+            <table class="w-full text-left border-collapse">
+              <thead class="sticky top-0 bg-gray-100"><tr class="text-gray-600"><th class="p-3 border-b">姓名</th><th class="p-3 border-b">電話</th><th class="p-3 border-b text-center">操作</th></tr></thead>
+              <tbody id="customer-list"></tbody>
+            </table>
           </div>
           
-          <div class="bg-white p-6 rounded-lg shadow-sm border md:col-span-2">
-            <div class="flex justify-between items-center mb-4">
-              <h3 class="font-bold text-lg text-blue-800">客戶列表</h3>
-              <input type="text" id="crm-search" placeholder="🔍 搜尋姓名或電話..." class="border p-2 rounded w-1/2 bg-gray-50" oninput="renderCustomers()">
-            </div>
-            <div class="overflow-y-auto max-h-64 border rounded">
-              <table class="w-full text-left border-collapse">
-                <thead class="sticky top-0 bg-gray-100"><tr class="text-gray-600"><th class="p-3 border-b">姓名</th><th class="p-3 border-b">電話</th><th class="p-3 border-b text-center">操作</th></tr></thead>
-                <tbody id="customer-list"></tbody>
-              </table>
-            </div>
-            
-            <div id="history-section" class="mt-8 hidden border-t-2 pt-6 border-dashed">
-              <h3 class="font-bold text-xl mb-4 text-blue-800">驗配歷史: <span id="history-name" class="text-black"></span></h3>
-              <div id="history-records" class="space-y-3 max-h-96 overflow-y-auto pr-2"></div>
-            </div>
+          <div id="history-section" class="mt-8 hidden border-t-2 pt-6 border-dashed">
+            <h3 class="font-bold text-xl mb-4 text-blue-800">驗配歷史: <span id="history-name" class="text-black"></span></h3>
+            <div id="history-records" class="space-y-3 max-h-96 overflow-y-auto pr-2"></div>
           </div>
         </div>
       </div>
-
-      <div id="view-scl" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border bg-white/40 backdrop-blur">
-        <div class="flex justify-between items-center mb-6 border-b border-gray-300 pb-2">
-          <h2 class="text-2xl font-bold text-gray-800">軟式隱形眼鏡 (SCL) 換算</h2>
-          <button onclick="saveCombinedRecord('scl')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-bold shadow">💾 儲存雙眼病歷</button>
-        </div>
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-          <div><label class="block text-sm font-bold text-gray-600">SPH (度數)</label><input type="number" id="scl-sph" step="0.25" class="w-full border p-2 rounded shadow-inner"></div>
-          <div><label class="block text-sm font-bold text-gray-600">CYL (散光)</label><input type="number" id="scl-cyl" step="0.25" class="w-full border p-2 rounded shadow-inner"></div>
-          <div><label class="block text-sm font-bold text-gray-600">Axis (軸度)</label><input type="number" id="scl-axis" class="w-full border p-2 rounded shadow-inner"></div>
-          <div><label class="block text-sm font-bold text-gray-600">V.D. (mm)</label><input type="number" id="scl-vd" value="12" class="w-full border p-2 rounded shadow-inner"></div>
-          <div><label class="block text-sm font-bold text-gray-600">平R / Flat K (mm)</label><input type="number" id="scl-k" step="0.01" class="w-full border p-2 rounded shadow-inner"></div>
-          <div><label class="block text-sm font-bold text-purple-600">ADD (老花選填)</label><input type="text" id="scl-add" placeholder="例如: +1.50 或 High" class="w-full border border-purple-300 bg-purple-50 p-2 rounded shadow-inner"></div>
-        </div>
-        
-        <div class="mb-6">
-          <label class="block text-sm font-bold text-gray-600 mb-1">備註 (Notes)</label>
-          <input type="text" id="scl-notes" placeholder="紀錄試戴狀況、鏡片廠牌或其他備註..." class="w-full border p-2 rounded shadow-inner">
-        </div>
-
-        <button onclick="calcSCL()" class="bg-gray-800 text-white px-8 py-3 rounded-lg font-bold hover:bg-gray-900 shadow">計算當前眼別</button>
-        
-        <div id="scl-result" class="mt-6 hidden bg-white p-5 rounded-lg border-2 border-dashed border-gray-400">
-          <h3 class="font-bold text-gray-500 mb-2">當前眼別暫存結果：</h3>
-          <p class="text-lg">建議度數: <span id="res-scl-sph" class="font-bold text-2xl"></span> / 散光: <span id="res-scl-cyl" class="font-bold text-2xl"></span></p>
-          <p class="text-lg">等效球面(S.E.): <span id="res-scl-se" class="font-bold text-2xl"></span> | 建議基弧: <span id="res-scl-bc" class="font-bold text-2xl"></span> mm</p>
-          <p class="text-lg text-purple-700">ADD: <span id="res-scl-add" class="font-bold text-xl"></span></p>
-          <p class="text-md text-gray-600 mt-2">備註: <span id="res-scl-notes" class="font-bold text-gray-800"></span></p>
-        </div>
-      </div>
-
-      <div id="view-rgp" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border bg-white/40 backdrop-blur">
-        <div class="flex justify-between items-center mb-6 border-b border-gray-300 pb-2">
-          <h2 class="text-2xl font-bold text-gray-800">RGP 球面硬式試片驗配</h2>
-          <button onclick="saveCombinedRecord('rgp')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-bold shadow">💾 儲存雙眼病歷</button>
-        </div>
-        <div class="space-y-6">
-          <div class="bg-white/50 p-4 rounded-lg grid grid-cols-3 gap-4 border shadow-sm">
-            <div><label class="block text-sm font-bold">R1 (平K)</label><input type="number" id="rgp-r1" step="0.01" class="w-full border p-2 rounded shadow-inner" onchange="calcRgpStep1()"></div>
-            <div><label class="block text-sm font-bold">R2 (陡K)</label><input type="number" id="rgp-r2" step="0.01" class="w-full border p-2 rounded shadow-inner" onchange="calcRgpStep1()"></div>
-            <div><label class="block text-sm font-bold text-blue-700">CS (角膜直徑)</label><input type="number" id="rgp-cs" step="0.1" class="w-full border p-2 rounded border-blue-400 bg-blue-50 shadow-inner" onchange="calcRgpStep1()"></div>
-          </div>
-
-          <div class="bg-white p-3 rounded border-l-4 border-blue-500 font-bold text-gray-700 shadow-sm" id="rgp-step1-hint">
-            💡 請輸入 R1, R2 與 CS 以獲取系統建議
-          </div>
-
-          <div class="flex items-center gap-4">
-            <label class="block font-bold w-1/2">所以現在有得戴的接近 DIA 是？</label>
-            <input type="number" id="rgp-trial-dia" step="0.1" class="border p-2 rounded w-1/2 shadow-inner" onchange="calcRgpStep3()">
-          </div>
-
-          <div class="text-orange-600 font-bold text-lg" id="rgp-step3-hint"></div>
-
-          <div class="flex items-center gap-4">
-            <label class="block font-bold w-1/2">輸入你現在實際戴上的試片 BC？</label>
-            <input type="number" id="rgp-actual-bc" step="0.01" class="border p-2 rounded w-1/2 shadow-inner">
-          </div>
-
-          <div class="border-t-2 border-dashed pt-5">
-            <label class="block font-bold mb-2 text-gray-700">動態靜態都可以了就驗光下面輸入外加眼鏡處方</label>
-            <div class="flex gap-4">
-              <input type="number" id="rgp-or-sph" step="0.25" placeholder="SPH" class="border p-3 rounded w-1/3 shadow-inner">
-              <input type="number" id="rgp-or-cyl" step="0.25" placeholder="CYL" class="border p-3 rounded w-1/3 shadow-inner">
-              <input type="number" id="rgp-or-vd" value="12" placeholder="V.D." class="border p-3 rounded w-1/3 shadow-inner text-gray-500">
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-6 bg-white p-4 rounded-lg border shadow-sm">
-            <div><label class="block font-bold text-gray-700">快完成了！你剛那鏡片幾度？</label><input type="number" id="rgp-trial-power" step="0.25" class="border p-3 rounded w-full mt-2 shadow-inner"></div>
-            <div><label class="block font-bold text-gray-700">你剛那個 DIA 確定要多少？</label><input type="number" id="rgp-final-dia" step="0.1" class="border p-3 rounded w-full mt-2 shadow-inner"></div>
-          </div>
-
-          <div>
-            <label class="block font-bold text-gray-700 mb-1">備註 (Notes)</label>
-            <input type="text" id="rgp-notes" placeholder="紀錄螢光圖狀況或其他備註..." class="border p-3 rounded w-full shadow-inner">
-          </div>
-
-          <button onclick="calcRGP()" class="bg-gray-800 text-white px-6 py-4 rounded-lg font-bold w-full text-lg hover:bg-gray-900 shadow-md">計算當前眼別</button>
-
-          <div id="rgp-result" class="mt-4 hidden bg-white p-5 rounded-lg border-2 border-dashed border-gray-400">
-            <h3 class="font-bold text-gray-500 mb-2">當前眼別暫存結果：</h3>
-            <p class="text-xl">度數: <span id="res-rgp-power" class="font-bold text-3xl"></span> D</p>
-            <p class="text-xl mt-2">基弧: <span id="res-rgp-bc" class="font-bold text-2xl"></span> mm | 直徑: <span id="res-rgp-dia" class="font-bold text-2xl"></span> mm</p>
-            <p class="text-md text-gray-600 mt-2 border-t pt-2">備註: <span id="res-rgp-notes" class="font-bold text-gray-800"></span></p>
-          </div>
-        </div>
-      </div>
-
-      <div id="view-toric" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border bg-white/40 backdrop-blur">
-        <div class="flex justify-between items-center mb-6 border-b border-gray-300 pb-2">
-          <h2 class="text-2xl font-bold text-purple-800">想配Toric RGP? 聽我勸 照步驟吧!</h2>
-          <button onclick="saveCombinedRecord('toric')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-bold shadow">💾 儲存雙眼病歷</button>
-        </div>
-        <div class="space-y-6">
-          <div class="bg-white p-5 rounded-lg border shadow-sm">
-            <label class="block font-bold text-lg mb-4 text-gray-700">1. 先驗光, 配出眼鏡理想度數, 並輸入角膜與 CS</label>
-            <div class="grid grid-cols-3 gap-4">
-              <input type="number" id="t-sph" step="0.25" placeholder="SPH" class="border p-3 rounded shadow-inner">
-              <input type="number" id="t-cyl" step="0.25" placeholder="CYL" class="border p-3 rounded shadow-inner">
-              <input type="number" id="t-vd" value="12" placeholder="V.D. (mm)" class="border p-3 rounded shadow-inner text-gray-500">
-              <input type="number" id="t-k1" step="0.25" placeholder="K1 (平K D)" class="border p-3 rounded shadow-inner" onchange="calcToricStep2()">
-              <input type="number" id="t-k2" step="0.25" placeholder="K2 (陡K D)" class="border p-3 rounded shadow-inner">
-              <input type="number" id="t-cs" step="0.1" placeholder="CS (角膜直徑)" class="border border-purple-400 bg-purple-50 p-3 rounded shadow-inner" onchange="calcToricStep2()">
-            </div>
-          </div>
-
-          <div class="bg-yellow-50 p-5 rounded-lg border border-yellow-300 shadow-sm text-lg">
-            <p class="font-bold text-yellow-800" id="toric-step2-hint">2. 拿出試片：建議 DIA [待計算] mm, BC 大約 [待計算] mm 給客人體驗比較保險</p>
-          </div>
-
-          <div>
-            <label class="block font-bold text-gray-700 mb-1">備註 (Notes)</label>
-            <input type="text" id="toric-notes" placeholder="紀錄鏡片旋轉、螢光圖狀況或其他備註..." class="border p-3 rounded w-full shadow-inner">
-          </div>
-
-          <div class="bg-gray-800 p-5 rounded-lg shadow-md text-center">
-            <p class="font-bold mb-3 text-white text-lg">3. 再來沒你的事了下面自動處理</p>
-            <button onclick="calcToric()" class="bg-purple-500 text-white px-8 py-3 rounded-lg font-bold w-full hover:bg-purple-600 text-lg transition-colors">執行雙軸運算 (當前眼別)</button>
-          </div>
-
-          <div id="toric-result" class="mt-4 hidden bg-white p-6 rounded-lg border-2 border-dashed border-purple-300">
-            <h3 class="font-bold text-gray-500 mb-3">當前眼別暫存結果：</h3>
-            <div class="grid grid-cols-2 gap-4">
-              <div class="bg-gray-50 p-4 rounded-lg border">
-                <p class="font-bold text-gray-500 mb-1 border-b pb-1">平坦軸 (FK)</p>
-                <p class="text-xl">弧度: <span id="res-t-bc1" class="font-bold text-2xl"></span> mm</p>
-                <p class="text-xl">度數: <span id="res-t-p1" class="font-bold text-2xl"></span> D</p>
-              </div>
-              <div class="bg-gray-50 p-4 rounded-lg border">
-                <p class="font-bold text-gray-500 mb-1 border-b pb-1">陡峭軸 (SK)</p>
-                <p class="text-xl">弧度: <span id="res-t-bc2" class="font-bold text-2xl"></span> mm</p>
-                <p class="text-xl">度數: <span id="res-t-p2" class="font-bold text-2xl"></span> D</p>
-              </div>
-            </div>
-            <p class="mt-4 font-bold text-xl text-center bg-purple-100 py-2 rounded">直徑: <span id="res-t-dia" class="text-2xl text-purple-800"></span> mm</p>
-            <p class="text-md text-gray-600 mt-3 border-t border-purple-200 pt-2 text-center">備註: <span id="res-t-notes" class="font-bold text-gray-800"></span></p>
-          </div>
-        </div>
-      </div>
-
     </div>
+
+    <div id="view-scl" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border transition-colors duration-300 bg-emerald-100">
+      <div class="flex justify-between items-center mb-6 border-b border-gray-300 pb-2">
+        <h2 class="text-2xl font-bold text-gray-800">軟式隱形眼鏡 (SCL) 換算</h2>
+        <button onclick="saveCombinedRecord('scl')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-bold shadow">💾 儲存雙眼病歷</button>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+        <div><label class="block text-sm font-bold text-gray-700">SPH (度數)</label><input type="number" id="scl-sph" step="0.25" class="w-full border p-2 rounded shadow-inner"></div>
+        <div><label class="block text-sm font-bold text-gray-700">CYL (散光)</label><input type="number" id="scl-cyl" step="0.25" class="w-full border p-2 rounded shadow-inner"></div>
+        <div><label class="block text-sm font-bold text-gray-700">Axis (軸度)</label><input type="number" id="scl-axis" class="w-full border p-2 rounded shadow-inner"></div>
+        <div><label class="block text-sm font-bold text-gray-700">V.D. (mm)</label><input type="number" id="scl-vd" value="12" class="w-full border p-2 rounded shadow-inner"></div>
+        <div><label class="block text-sm font-bold text-gray-700">平R / Flat K (mm)</label><input type="number" id="scl-k" step="0.01" class="w-full border p-2 rounded shadow-inner"></div>
+        <div><label class="block text-sm font-bold text-purple-700">ADD (老花選填)</label><input type="text" id="scl-add" placeholder="例如: +1.50 或 High" class="w-full border border-purple-300 bg-purple-50 p-2 rounded shadow-inner"></div>
+      </div>
+      
+      <div class="mb-6">
+        <label class="block text-sm font-bold text-gray-700 mb-1">備註 (Notes)</label>
+        <input type="text" id="scl-notes" placeholder="紀錄試戴狀況、鏡片廠牌或其他備註..." class="w-full border p-2 rounded shadow-inner">
+      </div>
+
+      <button onclick="calcSCL()" class="bg-gray-800 text-white px-8 py-3 rounded-lg font-bold hover:bg-gray-900 shadow">計算當前眼別</button>
+      
+      <div id="scl-result" class="mt-6 hidden bg-white/80 p-5 rounded-lg border-2 border-dashed">
+        <h3 class="font-bold text-gray-600 mb-2">當前眼別暫存結果：</h3>
+        <p class="text-lg">建議度數: <span id="res-scl-sph" class="font-bold text-2xl text-blue-700"></span> / 散光: <span id="res-scl-cyl" class="font-bold text-2xl"></span></p>
+        <p class="text-lg">等效球面(S.E.): <span id="res-scl-se" class="font-bold text-2xl"></span> | 建議基弧: <span id="res-scl-bc" class="font-bold text-2xl"></span> mm</p>
+        <p class="text-lg text-purple-700 font-bold mt-1">ADD: <span id="res-scl-add" class="text-xl"></span></p>
+        <p class="text-md text-gray-700 mt-2">備註: <span id="res-scl-notes" class="font-bold text-gray-900"></span></p>
+      </div>
+    </div>
+
+    <div id="view-rgp" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border transition-colors duration-300 bg-emerald-100">
+      <div class="flex justify-between items-center mb-6 border-b border-gray-300 pb-2">
+        <h2 class="text-2xl font-bold text-gray-800">RGP 球面硬式試片驗配</h2>
+        <button onclick="saveCombinedRecord('rgp')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-bold shadow">💾 儲存雙眼病歷</button>
+      </div>
+      <div class="space-y-6">
+        <div class="bg-white/60 p-4 rounded-lg grid grid-cols-3 gap-4 border shadow-sm">
+          <div><label class="block text-sm font-bold">R1 (平K)</label><input type="number" id="rgp-r1" step="0.01" class="w-full border p-2 rounded shadow-inner" onchange="calcRgpStep1()"></div>
+          <div><label class="block text-sm font-bold">R2 (陡K)</label><input type="number" id="rgp-r2" step="0.01" class="w-full border p-2 rounded shadow-inner" onchange="calcRgpStep1()"></div>
+          <div><label class="block text-sm font-bold text-blue-800">CS (角膜直徑)</label><input type="number" id="rgp-cs" step="0.1" class="w-full border p-2 rounded border-blue-400 bg-blue-50 shadow-inner" onchange="calcRgpStep1()"></div>
+        </div>
+
+        <div class="bg-white p-3 rounded border-l-4 border-blue-500 font-bold text-gray-800 shadow-sm" id="rgp-step1-hint">
+          💡 請輸入 R1, R2 與 CS 以獲取系統建議
+        </div>
+
+        <div class="flex items-center gap-4">
+          <label class="block font-bold w-1/2">所以現在有得戴的接近 DIA 是？</label>
+          <input type="number" id="rgp-trial-dia" step="0.1" class="border p-2 rounded w-1/2 shadow-inner" onchange="calcRgpStep3()">
+        </div>
+
+        <div class="text-orange-600 font-bold text-lg bg-white/50 p-2 rounded" id="rgp-step3-hint"></div>
+
+        <div class="flex items-center gap-4">
+          <label class="block font-bold w-1/2">輸入你現在實際戴上的試片 BC？</label>
+          <input type="number" id="rgp-actual-bc" step="0.01" class="border p-2 rounded w-1/2 shadow-inner">
+        </div>
+
+        <div class="border-t-2 border-gray-400 border-dashed pt-5">
+          <label class="block font-bold mb-2 text-gray-800">動態靜態都可以了就驗光下面輸入外加眼鏡處方</label>
+          <div class="flex gap-4">
+            <input type="number" id="rgp-or-sph" step="0.25" placeholder="SPH" class="border p-3 rounded w-1/3 shadow-inner">
+            <input type="number" id="rgp-or-cyl" step="0.25" placeholder="CYL" class="border p-3 rounded w-1/3 shadow-inner">
+            <input type="number" id="rgp-or-vd" value="12" placeholder="V.D." class="border p-3 rounded w-1/3 shadow-inner text-gray-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-6 bg-white/60 p-4 rounded-lg border shadow-sm">
+          <div><label class="block font-bold text-gray-800">快完成了！你剛那鏡片幾度？</label><input type="number" id="rgp-trial-power" step="0.25" class="border p-3 rounded w-full mt-2 shadow-inner"></div>
+          <div><label class="block font-bold text-gray-800">你剛那個 DIA 確定要多少？</label><input type="number" id="rgp-final-dia" step="0.1" class="border p-3 rounded w-full mt-2 shadow-inner"></div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-gray-800 mb-1">備註 (Notes)</label>
+          <input type="text" id="rgp-notes" placeholder="紀錄螢光圖狀況或其他備註..." class="border p-3 rounded w-full shadow-inner">
+        </div>
+
+        <button onclick="calcRGP()" class="bg-gray-800 text-white px-6 py-4 rounded-lg font-bold w-full text-lg hover:bg-gray-900 shadow-md">計算當前眼別</button>
+
+        <div id="rgp-result" class="mt-4 hidden bg-white/80 p-5 rounded-lg border-2 border-dashed">
+          <h3 class="font-bold text-gray-600 mb-2">當前眼別暫存結果：</h3>
+          <p class="text-xl font-bold">度數: <span id="res-rgp-power" class="text-3xl"></span> D</p>
+          <p class="text-xl mt-2 font-bold">基弧: <span id="res-rgp-bc" class="text-2xl"></span> mm | 直徑: <span id="res-rgp-dia" class="text-2xl"></span> mm</p>
+          <p class="text-md text-gray-700 mt-2 border-t border-gray-300 pt-2">備註: <span id="res-rgp-notes" class="font-bold text-gray-900"></span></p>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-toric" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border transition-colors duration-300 bg-emerald-100">
+      <div class="flex justify-between items-center mb-6 border-b border-gray-300 pb-2">
+        <h2 class="text-2xl font-bold text-purple-900">想配Toric RGP? 聽我勸 照步驟吧!</h2>
+        <button onclick="saveCombinedRecord('toric')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-bold shadow">💾 儲存雙眼病歷</button>
+      </div>
+      <div class="space-y-6">
+        <div class="bg-white/60 p-5 rounded-lg border shadow-sm">
+          <label class="block font-bold text-lg mb-4 text-gray-800">1. 先驗光, 配出眼鏡理想度數, 並輸入角膜與 CS</label>
+          <div class="grid grid-cols-3 gap-4">
+            <input type="number" id="t-sph" step="0.25" placeholder="SPH" class="border p-3 rounded shadow-inner">
+            <input type="number" id="t-cyl" step="0.25" placeholder="CYL" class="border p-3 rounded shadow-inner">
+            <input type="number" id="t-vd" value="12" placeholder="V.D. (mm)" class="border p-3 rounded shadow-inner text-gray-500">
+            <input type="number" id="t-k1" step="0.25" placeholder="K1 (平K D)" class="border p-3 rounded shadow-inner" onchange="calcToricStep2()">
+            <input type="number" id="t-k2" step="0.25" placeholder="K2 (陡K D)" class="border p-3 rounded shadow-inner">
+            <input type="number" id="t-cs" step="0.1" placeholder="CS (角膜直徑)" class="border border-purple-400 bg-purple-50 p-3 rounded shadow-inner" onchange="calcToricStep2()">
+          </div>
+        </div>
+
+        <div class="bg-yellow-100 p-5 rounded-lg border border-yellow-400 shadow-sm text-lg">
+          <p class="font-bold text-yellow-900" id="toric-step2-hint">2. 拿出試片：建議 DIA [待計算] mm, BC 大約 [待計算] mm 給客人體驗比較保險</p>
+        </div>
+
+        <div>
+          <label class="block font-bold text-gray-800 mb-1">備註 (Notes)</label>
+          <input type="text" id="toric-notes" placeholder="紀錄鏡片旋轉、螢光圖狀況或其他備註..." class="border p-3 rounded w-full shadow-inner">
+        </div>
+
+        <div class="bg-gray-800 p-5 rounded-lg shadow-md text-center">
+          <p class="font-bold mb-3 text-white text-lg">3. 再來沒你的事了下面自動處理</p>
+          <button onclick="calcToric()" class="bg-purple-600 text-white px-8 py-3 rounded-lg font-bold w-full hover:bg-purple-700 text-lg transition-colors">執行雙軸運算 (當前眼別)</button>
+        </div>
+
+        <div id="toric-result" class="mt-4 hidden bg-white/80 p-6 rounded-lg border-2 border-dashed">
+          <h3 class="font-bold text-gray-600 mb-3">當前眼別暫存結果：</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-white p-4 rounded-lg border shadow-sm">
+              <p class="font-bold text-gray-600 mb-1 border-b pb-1">平坦軸 (FK)</p>
+              <p class="text-xl font-bold">弧度: <span id="res-t-bc1" class="text-2xl"></span> mm</p>
+              <p class="text-xl font-bold">度數: <span id="res-t-p1" class="text-2xl text-blue-700"></span> D</p>
+            </div>
+            <div class="bg-white p-4 rounded-lg border shadow-sm">
+              <p class="font-bold text-gray-600 mb-1 border-b pb-1">陡峭軸 (SK)</p>
+              <p class="text-xl font-bold">弧度: <span id="res-t-bc2" class="text-2xl"></span> mm</p>
+              <p class="text-xl font-bold">度數: <span id="res-t-p2" class="text-2xl text-red-600"></span> D</p>
+            </div>
+          </div>
+          <p class="mt-4 font-bold text-xl text-center bg-purple-100 py-2 rounded">直徑: <span id="res-t-dia" class="text-2xl text-purple-900"></span> mm</p>
+          <p class="text-md text-gray-700 mt-3 border-t border-gray-400 pt-2 text-center">備註: <span id="res-t-notes" class="font-bold text-gray-900"></span></p>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <div id="print-area" class="hidden bg-white">
@@ -277,19 +274,35 @@
     }
     window.onload = loadCustomers;
 
-    const workspace = document.getElementById('workspace');
+    // --- 背景變色核心邏輯 ---
     function updateWorkspaceColor() {
       const eye = getSelectedEye();
-      workspace.classList.remove('bg-emerald-50', 'bg-sky-50', 'bg-white');
-      if(eye === 'OD') workspace.classList.add('bg-emerald-50');
-      else workspace.classList.add('bg-sky-50');
+      const panels = ['view-scl', 'view-rgp', 'view-toric'];
+      
+      panels.forEach(id => {
+        const panel = document.getElementById(id);
+        if(panel) {
+          // 移除所有可能的顏色 class
+          panel.classList.remove('bg-emerald-100', 'bg-blue-100');
+          // 根據眼別直接在面板上填滿顏色
+          if(eye === 'OD') {
+            panel.classList.add('bg-emerald-100');
+          } else {
+            panel.classList.add('bg-blue-100');
+          }
+        }
+      });
     }
 
     document.querySelectorAll('input[name="eye"]').forEach(radio => {
       radio.addEventListener('change', () => {
-        updateWorkspaceColor();
+        updateWorkspaceColor(); // 觸發背景色切換
+        
+        // 切換時清除舊的顯示結果框
         document.querySelectorAll('[id^="res-"]').forEach(el => el.innerText = '');
-        document.querySelectorAll('.hidden.bg-white').forEach(el => el.classList.add('hidden')); 
+        document.getElementById('scl-result').classList.add('hidden');
+        document.getElementById('rgp-result').classList.add('hidden');
+        document.getElementById('toric-result').classList.add('hidden');
       });
     });
 
@@ -307,11 +320,9 @@
       const eyeSelector = document.getElementById('eye-selector');
       if(view === 'crm') {
         eyeSelector.classList.add('hidden');
-        workspace.classList.remove('bg-emerald-50', 'bg-sky-50');
-        workspace.classList.add('bg-white');
       } else {
         eyeSelector.classList.remove('hidden');
-        updateWorkspaceColor();
+        updateWorkspaceColor(); // 確保切換頁籤時顏色是對的
       }
     }
 
@@ -436,14 +447,12 @@
       
       alert(`✅ 已成功儲存 ${activeCustomer.name} 的 ${type.toUpperCase()} 雙眼處方紀錄！\n若要列印，請前往客戶管理的「病歷」查詢。`);
       
-      // 清空暫存，並清空輸入框內的備註，避免下一眼共用
       sessionData[type] = { OD: null, OS: null };
       document.getElementById('scl-notes').value = '';
       document.getElementById('rgp-notes').value = '';
       document.getElementById('toric-notes').value = '';
     }
 
-    // --- 列印報表生成 (加入備註顯示) ---
     function generateEyeHtml(eyeData, type) {
       if(!eyeData) return `<p class="text-gray-400 italic text-2xl mt-4">無驗配資料</p>`;
       
@@ -462,7 +471,6 @@
                  <p class="mt-4 text-xl"><strong>直徑 (DIA):</strong> ${eyeData.dia} mm</p>`;
       }
       
-      // 加入備註渲染
       if(eyeData.notes) {
         html += `<div class="mt-4 pt-3 border-t border-gray-300">
                    <p class="text-lg text-gray-700"><strong>📝 備註：</strong> ${eyeData.notes}</p>
@@ -501,7 +509,7 @@
     }
     function formatD(val) { return val > 0 ? `+${val.toFixed(2)}` : val.toFixed(2); }
 
-    // --- View 2: SCL ---
+    // --- 計算機邏輯 ---
     function calcSCL() {
       const sph = parseFloat(document.getElementById('scl-sph').value) || 0;
       const cyl = parseFloat(document.getElementById('scl-cyl').value) || 0;
@@ -532,12 +540,11 @@
       resContainer.classList.remove('hidden');
       
       const eye = getSelectedEye();
-      resContainer.className = `mt-6 bg-white p-5 rounded-lg border-2 border-dashed ${eye === 'OD' ? 'border-emerald-500' : 'border-sky-500'}`;
+      resContainer.className = `mt-6 bg-white/80 p-5 rounded-lg border-2 border-dashed ${eye === 'OD' ? 'border-emerald-600' : 'border-blue-600'}`;
 
       sessionData.scl[eye] = { sph: strSph, cyl: scl_cyl_rounded, se: strSe, bc, add, notes };
     }
 
-    // --- View 3: RGP Spherical ---
     let rgpAvgR = 0, rgpSuggestedDia = 0;
     function calcRgpStep1() {
       const r1 = parseFloat(document.getElementById('rgp-r1').value) || 0;
@@ -576,12 +583,11 @@
       const resContainer = document.getElementById('rgp-result');
       resContainer.classList.remove('hidden');
       const eye = getSelectedEye();
-      resContainer.className = `mt-4 bg-white p-5 rounded-lg border-2 border-dashed ${eye === 'OD' ? 'border-emerald-500 text-emerald-900' : 'border-sky-500 text-sky-900'}`;
+      resContainer.className = `mt-4 bg-white/80 p-5 rounded-lg border-2 border-dashed ${eye === 'OD' ? 'border-emerald-600 text-emerald-900' : 'border-blue-600 text-blue-900'}`;
 
       sessionData.rgp[eye] = { power: finalPower, bc: actualBc, dia: finalDia, notes };
     }
 
-    // --- View 4: RGP Toric ---
     function calcToricStep2() {
       const k1 = parseFloat(document.getElementById('t-k1').value) || 0;
       const cs = parseFloat(document.getElementById('t-cs').value) || 0;
@@ -621,7 +627,7 @@
       const resContainer = document.getElementById('toric-result');
       resContainer.classList.remove('hidden');
       const eye = getSelectedEye();
-      resContainer.className = `mt-4 bg-white p-6 rounded-lg border-2 border-dashed ${eye === 'OD' ? 'border-emerald-500' : 'border-sky-500'}`;
+      resContainer.className = `mt-4 bg-white/80 p-6 rounded-lg border-2 border-dashed ${eye === 'OD' ? 'border-emerald-600' : 'border-blue-600'}`;
 
       sessionData.toric[eye] = { bc1: bc1_mm, p1, bc2: bc2_mm, p2, dia: finalDia, notes };
     }
