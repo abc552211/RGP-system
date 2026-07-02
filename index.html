@@ -9,11 +9,20 @@
   <style>
     .view-content { display: none; }
     .view-content.active { display: block; }
+    
+    /* 莫蘭迪自訂背景色 */
+    .bg-morandi-od { background-color: #eaece6 !important; } /* 莫蘭迪鼠尾草灰綠 */
+    .bg-morandi-os { background-color: #e3e7eb !important; } /* 莫蘭迪霧霾藍灰 */
+    
     @media print {
       body * { visibility: hidden; }
       #print-area, #print-area * { visibility: visible; }
-      #print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
+      #print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 0; }
       .no-print { display: none !important; }
+      
+      /* 確保列印時邊框與表格能正確顯示 */
+      .print-card { border: 1px solid #666 !important; padding: 12px !important; margin-bottom: 10px; }
+      .print-title { background-color: #7a8a99 !important; color: white !important; -webkit-print-color-adjust: exact; }
     }
   </style>
 </head>
@@ -249,7 +258,7 @@
   </div>
 
   <script>
-    // ==========================================
+   // ==========================================
     // 1. SUPABASE 設定區塊
     // ==========================================
     const supabaseUrl = 'https://pyyszbkcemqvmrecokwt.supabase.co';
@@ -260,21 +269,31 @@
     let records = [];
     let activeCustomer = null;
     
+    // 結構調整：除了暫存結果，連同使用者的「輸入框數值」一起暫存，切換眼別時才能完美回填
     let sessionData = {
-      scl: { OD: null, OS: null },
-      rgp: { OD: null, OS: null },
-      toric: { OD: null, OS: null }
+      scl: { 
+        OD: { inputs: {}, res: null }, 
+        OS: { inputs: {}, res: null } 
+      },
+      rgp: { 
+        OD: { inputs: {}, res: null }, 
+        OS: { inputs: {}, res: null } 
+      },
+      toric: { 
+        OD: { inputs: {}, res: null }, 
+        OS: { inputs: {}, res: null } 
+      }
     };
 
     async function loadCustomers() {
       try {
         const { data, error } = await supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
         if(data) { customers = data; renderCustomers(); }
-      } catch(e) { console.log("Supabase 連線失敗，使用本地記憶體模式。"); }
+      } catch(e) { console.log("Supabase 連線失敗。"); }
     }
     window.onload = loadCustomers;
 
-    // --- 背景變色核心邏輯 ---
+    // --- 莫蘭迪背景變色核心 ---
     function updateWorkspaceColor() {
       const eye = getSelectedEye();
       const panels = ['view-scl', 'view-rgp', 'view-toric'];
@@ -282,29 +301,155 @@
       panels.forEach(id => {
         const panel = document.getElementById(id);
         if(panel) {
-          // 直接使用 style 改變背景色，避開 Tailwind 抓不到動態 class 的問題
+          panel.classList.remove('bg-morandi-od', 'bg-morandi-os', 'bg-emerald-100', 'bg-blue-100');
           if(eye === 'OD') {
-            panel.style.backgroundColor = '#d1fae5'; // emerald-100 的色碼
+            panel.classList.add('bg-morandi-od');
           } else {
-            panel.style.backgroundColor = '#dbeafe'; // blue-100 的色碼
+            panel.classList.add('bg-morandi-os');
           }
         }
       });
     }
 
+    // 解決第 1 點：切換另一眼時，自動保存當前眼輸入值，並回填另一眼的暫存資料
     document.querySelectorAll('input[name="eye"]').forEach(radio => {
-      radio.addEventListener('change', () => {
-        updateWorkspaceColor(); // 觸發背景色切換
+      radio.addEventListener('change', (e) => {
+        const prevEye = e.target.value === 'OD' ? 'OS' : 'OD';
+        saveCurrentInputsToSession(prevEye); // 先把剛剛那眼的輸入框存起來
         
-        // 切換時清除舊的顯示結果框
-        document.querySelectorAll('[id^="res-"]').forEach(el => el.innerText = '');
-        document.getElementById('scl-result').classList.add('hidden');
-        document.getElementById('rgp-result').classList.add('hidden');
-        document.getElementById('toric-result').classList.add('hidden');
+        updateWorkspaceColor();
+        restoreInputsAndResultsFromSession(); // 回填現在點選這眼的資料
       });
     });
 
+    function getActiveTabType() {
+      if(document.getElementById('view-scl').classList.contains('active')) return 'scl';
+      if(document.getElementById('view-rgp').classList.contains('active')) return 'rgp';
+      if(document.getElementById('view-toric').classList.contains('active')) return 'toric';
+      return 'scl';
+    }
+
+    function saveCurrentInputsToSession(eye) {
+      const type = getActiveTabType();
+      if (type === 'scl') {
+        sessionData.scl[eye].inputs = {
+          sph: document.getElementById('scl-sph').value,
+          cyl: document.getElementById('scl-cyl').value,
+          axis: document.getElementById('scl-axis').value,
+          vd: document.getElementById('scl-vd').value,
+          k: document.getElementById('scl-k').value,
+          add: document.getElementById('scl-add').value,
+          notes: document.getElementById('scl-notes').value
+        };
+      } else if (type === 'rgp') {
+        sessionData.rgp[eye].inputs = {
+          r1: document.getElementById('rgp-r1').value,
+          r2: document.getElementById('rgp-r2').value,
+          cs: document.getElementById('rgp-cs').value,
+          trialDia: document.getElementById('rgp-trial-dia').value,
+          actualBc: document.getElementById('rgp-actual-bc').value,
+          orSph: document.getElementById('rgp-or-sph').value,
+          orCyl: document.getElementById('rgp-or-cyl').value,
+          trialPower: document.getElementById('rgp-trial-power').value,
+          finalDia: document.getElementById('rgp-final-dia').value,
+          notes: document.getElementById('rgp-notes').value
+        };
+      } else if (type === 'toric') {
+        sessionData.toric[eye].inputs = {
+          sph: document.getElementById('t-sph').value,
+          cyl: document.getElementById('t-cyl').value,
+          vd: document.getElementById('t-vd').value,
+          k1: document.getElementById('t-k1').value,
+          k2: document.getElementById('t-k2').value,
+          cs: document.getElementById('t-cs').value,
+          notes: document.getElementById('toric-notes').value
+        };
+      }
+    }
+
+    function restoreInputsAndResultsFromSession() {
+      const eye = getSelectedEye();
+      const type = getActiveTabType();
+      const data = sessionData[type][eye];
+
+      // 1. 清空所有輸入與結果
+      clearInputsAndResultsOfTab(type);
+
+      // 2. 回填輸入框
+      if(data.inputs && Object.keys(data.inputs).length > 0) {
+        if(type === 'scl') {
+          document.getElementById('scl-sph').value = data.inputs.sph || '';
+          document.getElementById('scl-cyl').value = data.inputs.cyl || '';
+          document.getElementById('scl-axis').value = data.inputs.axis || '';
+          document.getElementById('scl-vd').value = data.inputs.vd || '12';
+          document.getElementById('scl-k').value = data.inputs.k || '';
+          document.getElementById('scl-add').value = data.inputs.add || '';
+          document.getElementById('scl-notes').value = data.inputs.notes || '';
+        } else if(type === 'rgp') {
+          document.getElementById('rgp-r1').value = data.inputs.r1 || '';
+          document.getElementById('rgp-r2').value = data.inputs.r2 || '';
+          document.getElementById('rgp-cs').value = data.inputs.cs || '';
+          document.getElementById('rgp-trial-dia').value = data.inputs.trialDia || '';
+          document.getElementById('rgp-actual-bc').value = data.inputs.actualBc || '';
+          document.getElementById('rgp-or-sph').value = data.inputs.orSph || '';
+          document.getElementById('rgp-or-cyl').value = data.inputs.orCyl || '';
+          document.getElementById('rgp-trial-power').value = data.inputs.trialPower || '';
+          document.getElementById('rgp-final-dia').value = data.inputs.finalDia || '';
+          document.getElementById('rgp-notes').value = data.inputs.notes || '';
+        } else if(type === 'toric') {
+          document.getElementById('t-sph').value = data.inputs.sph || '';
+          document.getElementById('t-cyl').value = data.inputs.cyl || '';
+          document.getElementById('t-vd').value = data.inputs.vd || '12';
+          document.getElementById('t-k1').value = data.inputs.k1 || '';
+          document.getElementById('t-k2').value = data.inputs.k2 || '';
+          document.getElementById('t-cs').value = data.inputs.cs || '';
+          document.getElementById('toric-notes').value = data.inputs.notes || '';
+        }
+      }
+
+      // 3. 回填結果視覺框
+      if(data.res) {
+        if(type === 'scl') {
+          document.getElementById('res-scl-sph').innerText = data.res.sph;
+          document.getElementById('res-scl-cyl').innerText = data.res.cyl;
+          document.getElementById('res-scl-se').innerText = data.res.se;
+          document.getElementById('res-scl-bc').innerText = data.res.bc;
+          document.getElementById('res-scl-add').innerText = data.res.add || '無';
+          document.getElementById('res-scl-notes').innerText = data.res.notes || '無';
+          document.getElementById('scl-result').classList.remove('hidden');
+        } else if(type === 'rgp') {
+          document.getElementById('res-rgp-power').innerText = data.res.power;
+          document.getElementById('res-rgp-bc').innerText = data.res.bc;
+          document.getElementById('res-rgp-dia').innerText = data.res.dia;
+          document.getElementById('res-rgp-notes').innerText = data.res.notes || '無';
+          document.getElementById('rgp-result').classList.remove('hidden');
+        } else if(type === 'toric') {
+          document.getElementById('res-t-bc1').innerText = data.res.bc1;
+          document.getElementById('res-t-p1').innerText = data.res.p1;
+          document.getElementById('res-t-bc2').innerText = data.res.bc2;
+          document.getElementById('res-t-p2').innerText = data.res.p2;
+          document.getElementById('res-t-dia').innerText = data.res.dia;
+          document.getElementById('res-t-notes').innerText = data.res.notes || '無';
+          document.getElementById('toric-result').classList.remove('hidden');
+        }
+      }
+    }
+
+    function clearInputsAndResultsOfTab(type) {
+      document.getElementById(`${type}-result`).classList.add('hidden');
+      if(type === 'scl') {
+        document.querySelectorAll('[id^="res-scl-"]').forEach(el => el.innerText = '');
+      } else if(type === 'rgp') {
+        document.querySelectorAll('[id^="res-rgp-"]').forEach(el => el.innerText = '');
+      } else if(type === 'toric') {
+        document.querySelectorAll('[id^="res-t-"]').forEach(el => el.innerText = '');
+      }
+    }
+
     function switchView(view) {
+      const currentEye = getSelectedEye();
+      saveCurrentInputsToSession(currentEye); // 切換分頁前也幫忙存一下
+
       document.querySelectorAll('.view-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('[id^="nav-"]').forEach(el => {
         el.classList.remove('bg-blue-600', 'text-white');
@@ -320,7 +465,8 @@
         eyeSelector.classList.add('hidden');
       } else {
         eyeSelector.classList.remove('hidden');
-        updateWorkspaceColor(); // 確保切換頁籤時顏色是對的
+        updateWorkspaceColor();
+        restoreInputsAndResultsFromSession(); // 切過來時自動把這分頁這眼的資料拉出來
       }
     }
 
@@ -329,7 +475,6 @@
     function setActiveCustomer(id, name) {
       activeCustomer = { id, name };
       document.getElementById('active-customer-name').innerText = name;
-      alert(`已選擇客戶：${name}，您可以開始輸入驗配數據了。`);
     }
 
     async function addCustomer() {
@@ -343,34 +488,23 @@
 
       try {
         const { data, error } = await supabaseClient.from('customers').insert([dbCustomer]).select();
-
-        if (error) {
-          console.error("資料庫寫入失敗:", error);
-          alert("新增客戶失敗: " + error.message);
-          return;
-        }
+        if (error) return alert("新增客戶失敗: " + error.message);
 
         if (data && data.length > 0) {
           const newCustomer = data[0];
           customers.unshift(newCustomer);
-          
           document.getElementById('crm-name').value = '';
           document.getElementById('crm-phone').value = '';
           document.getElementById('crm-dob').value = '';
-          
           renderCustomers();
           setActiveCustomer(newCustomer.id, newCustomer.name);
         }
-      } catch (e) {
-        console.error("系統錯誤:", e);
-        alert("發生未知的系統錯誤，請檢查網路連線。");
-      }
+      } catch (e) { alert("發生系統錯誤。"); }
     }
 
     function renderCustomers() {
       const term = document.getElementById('crm-search').value.toLowerCase();
       const filtered = customers.filter(c => c.name.toLowerCase().includes(term) || (c.phone && c.phone.includes(term)));
-      
       const tbody = document.getElementById('customer-list');
       tbody.innerHTML = filtered.map(c => `
         <tr class="border-b hover:bg-gray-100 transition-colors">
@@ -384,6 +518,7 @@
       `).join('');
     }
 
+    // 解決第 2 點：歷史列表直接呈現最終核心處方摘要，免去每張都要點開
     async function viewHistory(id, name) {
       document.getElementById('history-section').classList.remove('hidden');
       document.getElementById('history-name').innerText = name;
@@ -402,26 +537,49 @@
       }
 
       container.innerHTML = userRecords.map(r => {
-        const dateStr = new Date(r.created_at).toLocaleString('zh-TW');
+        const dateStr = new Date(r.created_at).toLocaleDateString('zh-TW');
+        
+        // 建立摘要字串
+        let summaryOD = '-', summaryOS = '-';
+        if (r.parameters) {
+          if (r.type === 'scl' && r.parameters.OD) summaryOD = `${r.parameters.OD.sph} / ${r.parameters.OD.cyl} (BC:${r.parameters.OD.bc})`;
+          if (r.type === 'scl' && r.parameters.OS) summaryOS = `${r.parameters.OS.sph} / ${r.parameters.OS.cyl} (BC:${r.parameters.OS.bc})`;
+          
+          if (r.type === 'rgp' && r.parameters.OD) summaryOD = `${r.parameters.OD.power}D (BC:${r.parameters.OD.bc} / D:${r.parameters.OD.dia})`;
+          if (r.type === 'rgp' && r.parameters.OS) summaryOS = `${r.parameters.OS.power}D (BC:${r.parameters.OS.bc} / D:${r.parameters.OS.dia})`;
+          
+          if (r.type === 'toric' && r.parameters.OD) summaryOD = `F:${r.parameters.OD.p1}D / S:${r.parameters.OD.p2}D`;
+          if (r.type === 'toric' && r.parameters.OS) summaryOS = `F:${r.parameters.OS.p1}D / S:${r.parameters.OS.p2}D`;
+        }
+
         return `
-        <div class="p-4 bg-white border rounded-lg flex justify-between items-center shadow-sm">
-          <div>
-            <span class="bg-gray-800 text-white text-xs px-2 py-1 rounded font-bold uppercase mr-2">${r.type}</span>
-            <span class="font-bold text-gray-700">${dateStr}</span>
+        <div class="p-3 bg-white border rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-2 shadow-sm text-sm">
+          <div class="flex-1">
+            <div class="mb-1">
+              <span class="bg-slate-700 text-white text-xs px-2 py-0.5 rounded font-bold uppercase mr-2">${r.type}</span>
+              <span class="font-bold text-gray-500">${dateStr}</span>
+            </div>
+            <div class="text-xs text-gray-600 grid grid-cols-2 gap-x-4">
+              <div><strong>OD:</strong> <span class="text-blue-700 font-medium">${summaryOD}</span></div>
+              <div><strong>OS:</strong> <span class="text-emerald-700 font-medium">${summaryOS}</span></div>
+            </div>
           </div>
-          <button onclick='printReport(${JSON.stringify(r)})' class="bg-indigo-100 text-indigo-800 border border-indigo-300 hover:bg-indigo-200 px-4 py-1 font-bold rounded shadow-sm">調閱列印</button>
+          <button onclick='printReport(${JSON.stringify(r)})' class="bg-slate-100 hover:bg-slate-200 border text-slate-700 px-3 py-1 font-bold rounded text-xs">調閱列印</button>
         </div>
       `}).join('');
     }
 
     async function saveCombinedRecord(type) {
-      if(!activeCustomer) return alert("❌ 請先至左側選單的「客戶管理」選擇或建立一位客戶！");
+      if(!activeCustomer) return alert("❌ 請先點客戶「選擇」！");
       
-      const currentOD = sessionData[type].OD;
-      const currentOS = sessionData[type].OS;
+      const currentEye = getSelectedEye();
+      saveCurrentInputsToSession(currentEye); // 儲存前先撈一下當前輸入
+
+      const currentOD = sessionData[type].OD.res;
+      const currentOS = sessionData[type].OS.res;
       
       if(!currentOD && !currentOS) {
-        return alert("❌ 兩眼皆無計算結果，無法儲存！請先輸入數值並點擊「計算」。");
+        return alert("❌ 兩眼皆無計算結果，請先點擊「計算當前眼別」。");
       }
 
       const record = {
@@ -433,48 +591,39 @@
       
       try { 
         const { data, error } = await supabaseClient.from('fitting_records').insert([record]).select();
-        if (error) {
-          console.error("病歷儲存失敗:", error);
-          return alert("儲存病歷失敗：" + error.message);
-        }
+        if (error) return alert("儲存病歷失敗：" + error.message);
         if (data && data.length > 0) records.push(data[0]);
-      } catch(e) {
-        console.error("系統錯誤:", e);
-        return alert("發生未知的系統錯誤，病歷無法儲存。");
-      }
-      
-      alert(`✅ 已成功儲存 ${activeCustomer.name} 的 ${type.toUpperCase()} 雙眼處方紀錄！\n若要列印，請前往客戶管理的「病歷」查詢。`);
-      
-      sessionData[type] = { OD: null, OS: null };
-      document.getElementById('scl-notes').value = '';
-      document.getElementById('rgp-notes').value = '';
-      document.getElementById('toric-notes').value = '';
+        alert(`✅ 已成功儲存 ${activeCustomer.name} 的雙眼紀錄！`);
+        viewHistory(activeCustomer.id, activeCustomer.name);
+      } catch(e) { alert("系統錯誤，儲存失敗。"); }
     }
 
+    // 解決第 3 點：重構列印排版，改用緊湊小字與細緻邊框，防止空白
     function generateEyeHtml(eyeData, type) {
-      if(!eyeData) return `<p class="text-gray-400 italic text-2xl mt-4">無驗配資料</p>`;
+      if(!eyeData) return `<p style="color:#aaa; font-style:italic; font-size:13px;">無資料</p>`;
       
-      let html = '';
+      let html = '<div style="font-size:13px; line-height:1.4; color:#222;">';
       if(type === 'scl') {
-        html += `<p class="mt-2"><strong>SPH:</strong> ${eyeData.sph} / <strong>CYL:</strong> ${eyeData.cyl}</p>
-                 <p class="mt-2"><strong>基弧 (BC):</strong> ${eyeData.bc} mm</p>
-                 ${eyeData.add ? `<p class="mt-2 text-purple-700"><strong>ADD:</strong> ${eyeData.add}</p>` : ''}`;
+        html += `<p><b>度數 (SPH):</b> ${eyeData.sph}</p>
+                 <p><b>散光 (CYL):</b> ${eyeData.cyl}</p>
+                 <p><b>基弧 (BC):</b> ${eyeData.bc} mm</p>
+                 ${eyeData.add ? `<p style="color:#6b21a8;"><b>ADD:</b> ${eyeData.add}</p>` : ''}`;
       } else if(type === 'rgp') {
-        html += `<p class="mt-2 text-3xl font-bold text-blue-700">${eyeData.power} D</p>
-                 <p class="mt-2"><strong>基弧 (BC):</strong> ${eyeData.bc} mm</p>
-                 <p class="mt-2"><strong>直徑 (DIA):</strong> ${eyeData.dia} mm</p>`;
+        html += `<p style="font-size:16px; font-weight:bold; color:#1d4ed8;">處方度數: ${eyeData.power} D</p>
+                 <p><b>最終基弧 (BC):</b> ${eyeData.bc} mm</p>
+                 <p><b>最終直徑 (DIA):</b> ${eyeData.dia} mm</p>`;
       } else if(type === 'toric') {
-        html += `<p class="mt-2"><strong>平坦軸:</strong> BC ${eyeData.bc1} mm / <span class="font-bold text-blue-700">${eyeData.p1} D</span></p>
-                 <p class="mt-2"><strong>陡峭軸:</strong> BC ${eyeData.bc2} mm / <span class="font-bold text-red-700">${eyeData.p2} D</span></p>
-                 <p class="mt-4 text-xl"><strong>直徑 (DIA):</strong> ${eyeData.dia} mm</p>`;
+        html += `<p><b>平坦軸:</b> BC ${eyeData.bc1} mm / <span style="font-weight:bold; color:#1d4ed8;">${eyeData.p1} D</span></p>
+                 <p><b>陡峭軸:</b> BC ${eyeData.bc2} mm / <span style="font-weight:bold; color:#b91c1c;">${eyeData.p2} D</span></p>
+                 <p><b>直徑 (DIA):</b> ${eyeData.dia} mm</p>`;
       }
       
       if(eyeData.notes) {
-        html += `<div class="mt-4 pt-3 border-t border-gray-300">
-                   <p class="text-lg text-gray-700"><strong>📝 備註：</strong> ${eyeData.notes}</p>
+        html += `<div style="margin-top:6px; padding-top:4px; border-top:1px dashed #ccc; font-size:11px; color:#555;">
+                   <b>備註：</b> ${eyeData.notes}
                  </div>`;
       }
-      
+      html += '</div>';
       return html;
     }
 
@@ -482,22 +631,17 @@
       const customer = customers.find(c => c.id === r.customer_id);
       document.getElementById('print-name').innerText = customer ? customer.name : '未知';
       document.getElementById('print-phone').innerText = customer ? (customer.phone || '無') : '';
-      document.getElementById('print-date').innerText = new Date(r.created_at).toLocaleString('zh-TW');
-      document.getElementById('print-type').innerText = r.type;
+      document.getElementById('print-date').innerText = new Date(r.created_at).toLocaleDateString('zh-TW');
+      document.getElementById('print-type').innerText = r.type.toUpperCase();
       
-      let odData = null, osData = null;
-      if(r.eye === 'OU' || r.parameters.OD !== undefined) {
-        odData = r.parameters.OD;
-        osData = r.parameters.OS;
-      } else {
-        if(r.eye === 'OD') odData = r.parameters;
-        if(r.eye === 'OS') osData = r.parameters;
-      }
+      let odData = r.parameters ? r.parameters.OD : null;
+      let osData = r.parameters ? r.parameters.OS : null;
 
       document.getElementById('print-od-content').innerHTML = generateEyeHtml(odData, r.type);
       document.getElementById('print-os-content').innerHTML = generateEyeHtml(osData, r.type);
       
-      window.print();
+      // 強制瀏覽器渲染完畢後再呼叫列印視窗
+      setTimeout(() => { window.print(); }, 150);
     }
 
     function round025(val) { return Math.round(val * 4) / 4; }
@@ -507,8 +651,9 @@
     }
     function formatD(val) { return val > 0 ? `+${val.toFixed(2)}` : val.toFixed(2); }
 
-    // --- 計算機邏輯 ---
+    // --- 各計算邏輯 ---
     function calcSCL() {
+      const eye = getSelectedEye();
       const sph = parseFloat(document.getElementById('scl-sph').value) || 0;
       const cyl = parseFloat(document.getElementById('scl-cyl').value) || 0;
       const vd = parseFloat(document.getElementById('scl-vd').value) || 12;
@@ -522,7 +667,7 @@
       const scl_sph_rounded = round025(cl_sph_raw);
       const scl_cyl_rounded = round025(cl_total_raw - cl_sph_raw);
       const se = round025(scl_sph_rounded + (scl_cyl_rounded / 2));
-      const bc = (flatK * 1.1).toFixed(2);
+      const bc = flatK ? (flatK * 1.1).toFixed(2) : '0.00';
 
       const strSph = formatD(scl_sph_rounded);
       const strSe = formatD(se);
@@ -534,13 +679,9 @@
       document.getElementById('res-scl-add').innerText = add || '無';
       document.getElementById('res-scl-notes').innerText = notes || '無';
       
-      const resContainer = document.getElementById('scl-result');
-      resContainer.classList.remove('hidden');
-      
-      const eye = getSelectedEye();
-      resContainer.className = `mt-6 bg-white/80 p-5 rounded-lg border-2 border-dashed ${eye === 'OD' ? 'border-emerald-600' : 'border-blue-600'}`;
+      document.getElementById('scl-result').classList.remove('hidden');
 
-      sessionData.scl[eye] = { sph: strSph, cyl: scl_cyl_rounded, se: strSe, bc, add, notes };
+      sessionData.scl[eye].res = { sph: strSph, cyl: scl_cyl_rounded, se: strSe, bc, add, notes };
     }
 
     let rgpAvgR = 0, rgpSuggestedDia = 0;
@@ -551,7 +692,7 @@
       if(r1 && r2 && cs) {
         rgpAvgR = (r1 + r2) / 2;
         rgpSuggestedDia = cs - 2.0;
-        document.getElementById('rgp-step1-hint').innerText = `💡 根據客人 CS，系統建議最佳 DIA: ${rgpSuggestedDia.toFixed(1)} mm, 基礎 BC: ${rgpAvgR.toFixed(2)} mm`;
+        document.getElementById('rgp-step1-hint').innerText = `💡 系統建議最佳 DIA: ${rgpSuggestedDia.toFixed(1)} mm, 基礎 BC: ${rgpAvgR.toFixed(2)} mm`;
       }
     }
 
@@ -559,31 +700,50 @@
       const trialDia = parseFloat(document.getElementById('rgp-trial-dia').value);
       if(rgpAvgR && rgpSuggestedDia && trialDia) {
         const adjustedBC = rgpAvgR + ((trialDia - rgpSuggestedDia) * 0.1);
-        document.getElementById('rgp-step3-hint').innerText = `你 DIA 改用 ${trialDia.toFixed(1)}，那你 BC 就拿 ${adjustedBC.toFixed(2)} 先試看染色`;
+        document.getElementById('rgp-step3-hint').innerText = `試戴片 DIA 為 ${trialDia.toFixed(1)} 時，基礎對應 BC 建議拿 ${adjustedBC.toFixed(2)} mm`;
       }
     }
 
+    // 解決第 4 點：球面 RGP 最終處方直徑（DIA）換算邏輯與淚液鏡補償
     function calcRGP() {
+      const eye = getSelectedEye();
       const orSph = parseFloat(document.getElementById('rgp-or-sph').value) || 0;
       const vd = parseFloat(document.getElementById('rgp-or-vd').value) || 12;
       const trialPower = parseFloat(document.getElementById('rgp-trial-power').value) || 0;
-      const actualBc = document.getElementById('rgp-actual-bc').value;
-      const finalDia = document.getElementById('rgp-final-dia').value;
+      
+      const trialDia = parseFloat(document.getElementById('rgp-trial-dia').value) || 0;
+      const actualBc = parseFloat(document.getElementById('rgp-actual-bc').value) || 0;
+      const finalDia = parseFloat(document.getElementById('rgp-final-dia').value) || 0;
       const notes = document.getElementById('rgp-notes').value || '';
 
-      const finalPower = formatD(trialPower + round025(calcVertex(orSph, vd)));
+      if (!actualBc || !trialDia || !finalDia) {
+        return alert("請填寫完整的試片BC、試戴DIA與最終DIA，系統才能進行跨尺寸換算！");
+      }
 
-      document.getElementById('res-rgp-power').innerText = finalPower;
-      document.getElementById('res-rgp-bc').innerText = actualBc;
-      document.getElementById('res-rgp-dia').innerText = finalDia;
+      // 1. 計算基弧換算：直徑每增加 0.5mm，BC放平 0.05mm
+      const diaDiff = finalDia - trialDia;
+      const finalBcCalculated = actualBc + (diaDiff * 0.1);
+
+      // 2. 計算淚液鏡補償度數：BC放平(變大) 0.05mm 會產生 -0.25D 的淚液鏡鏡片效應，故鏡片度數需補償 +0.25D
+      const bcDiff = finalBcCalculated - actualBc;
+      const tearLensCompensation = (bcDiff / 0.05) * 0.25;
+
+      // 3. 疊加外加驗光度數（經過頂點修正）與淚液鏡補償度數
+      const overRefractionCorrected = calcVertex(orSph, vd);
+      const rawFinalPower = trialPower + overRefractionCorrected + tearLensCompensation;
+      const finalPowerRounded = formatD(round025(rawFinalPower));
+
+      const strBc = finalBcCalculated.toFixed(2);
+      const strDia = finalDia.toFixed(1);
+
+      document.getElementById('res-rgp-power').innerText = finalPowerRounded;
+      document.getElementById('res-rgp-bc').innerText = `${strBc} (已補償 ${formatD(bcDiff)}mm)`;
+      document.getElementById('res-rgp-dia').innerText = strDia;
       document.getElementById('res-rgp-notes').innerText = notes || '無';
       
-      const resContainer = document.getElementById('rgp-result');
-      resContainer.classList.remove('hidden');
-      const eye = getSelectedEye();
-      resContainer.className = `mt-4 bg-white/80 p-5 rounded-lg border-2 border-dashed ${eye === 'OD' ? 'border-emerald-600 text-emerald-900' : 'border-blue-600 text-blue-900'}`;
+      document.getElementById('rgp-result').classList.remove('hidden');
 
-      sessionData.rgp[eye] = { power: finalPower, bc: actualBc, dia: finalDia, notes };
+      sessionData.rgp[eye].res = { power: finalPowerRounded, bc: strBc, dia: strDia, notes };
     }
 
     function calcToricStep2() {
@@ -592,11 +752,12 @@
       if(k1 && cs) {
         const trialDia = (cs - 2.0).toFixed(1);
         const trialBc = (337.5 / k1).toFixed(2);
-        document.getElementById('toric-step2-hint').innerText = `2. 拿出試片：建議 DIA ${trialDia} mm, BC 大約 ${trialBc} mm 給客人體驗比較保險`;
+        document.getElementById('toric-step2-hint').innerText = `2. 拿出試片：建議 DIA ${trialDia} mm, BC 大約 ${trialBc} mm`;
       }
     }
 
     function calcToric() {
+      const eye = getSelectedEye();
       const sph = parseFloat(document.getElementById('t-sph').value) || 0;
       const cyl = parseFloat(document.getElementById('t-cyl').value) || 0;
       const vd = parseFloat(document.getElementById('t-vd').value) || 12;
@@ -608,12 +769,12 @@
       const vertex_1 = round025(calcVertex(sph, vd));
       const vertex_2 = round025(calcVertex(sph + cyl, vd));
 
-      const bc1_mm = (337.5 / (k1 - 0.25)).toFixed(2);
-      const bc2_mm = (337.5 / (k2 - 1.00)).toFixed(2);
+      const bc1_mm = k1 ? (337.5 / (k1 - 0.25)).toFixed(2) : '0.00';
+      const bc2_mm = k2 ? (337.5 / (k2 - 1.00)).toFixed(2) : '0.00';
 
       const p1 = formatD(vertex_1 - (-0.25));
       const p2 = formatD(vertex_2 - (-1.00));
-      const finalDia = cs ? (cs - 2.0).toFixed(1) : 9.8;
+      const finalDia = cs ? (cs - 2.0).toFixed(1) : '9.8';
 
       document.getElementById('res-t-bc1').innerText = bc1_mm;
       document.getElementById('res-t-p1').innerText = p1;
@@ -622,12 +783,9 @@
       document.getElementById('res-t-dia').innerText = finalDia;
       document.getElementById('res-t-notes').innerText = notes || '無';
       
-      const resContainer = document.getElementById('toric-result');
-      resContainer.classList.remove('hidden');
-      const eye = getSelectedEye();
-      resContainer.className = `mt-4 bg-white/80 p-6 rounded-lg border-2 border-dashed ${eye === 'OD' ? 'border-emerald-600' : 'border-blue-600'}`;
+      document.getElementById('toric-result').classList.remove('hidden');
 
-      sessionData.toric[eye] = { bc1: bc1_mm, p1, bc2: bc2_mm, p2, dia: finalDia, notes };
+      sessionData.toric[eye].res = { bc1: bc1_mm, p1, bc2: bc2_mm, p2, dia: finalDia, notes };
     }
   </script>
 </body>
