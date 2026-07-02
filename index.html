@@ -3,284 +3,442 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>專業隱形眼鏡驗配計算機</title>
+  <title>專業隱形眼鏡驗配與 CRM 系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
+    .view-content { display: none; }
+    .view-content.active { display: block; }
+    
+    /* 列印專用樣式 */
+    @media print {
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
+      .no-print { display: none !important; }
+    }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans p-6">
+<body class="bg-gray-100 text-gray-800 font-sans flex h-screen overflow-hidden">
 
-  <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
-    <div class="bg-blue-600 text-white p-6">
-      <h1 class="text-2xl font-bold">專業隱形眼鏡驗配計算機</h1>
+  <div class="w-64 bg-gray-900 text-white flex flex-col no-print">
+    <div class="p-6 bg-blue-700 font-bold text-xl tracking-wide">驗配系統 PRO</div>
+    <nav class="flex-1 px-4 py-6 space-y-2">
+      <button onclick="switchView('crm')" id="nav-crm" class="w-full text-left px-4 py-3 rounded bg-blue-600 text-white font-medium">客戶管理 (CRM)</button>
+      <button onclick="switchView('scl')" id="nav-scl" class="w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-300 font-medium">軟式換算 (SCL)</button>
+      <button onclick="switchView('rgp')" id="nav-rgp" class="w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-300 font-medium">球面硬式 (RGP)</button>
+      <button onclick="switchView('toric')" id="nav-toric" class="w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-300 font-medium">散光硬式 (Toric)</button>
+    </nav>
+    <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
+      當前客戶: <span id="active-customer-name" class="font-bold text-green-400">未選擇</span>
+    </div>
+  </div>
+
+  <div class="flex-1 overflow-y-auto p-8 relative">
+    
+    <div id="eye-selector" class="hidden mb-6 bg-white p-3 rounded shadow inline-flex gap-4 no-print">
+      <label class="font-bold flex items-center gap-2 cursor-pointer text-blue-700">
+        <input type="radio" name="eye" value="OD" checked class="w-5 h-5"> 右眼 (OD)
+      </label>
+      <label class="font-bold flex items-center gap-2 cursor-pointer text-green-700">
+        <input type="radio" name="eye" value="OS" class="w-5 h-5"> 左眼 (OS)
+      </label>
     </div>
 
-    <div class="flex border-b bg-gray-100">
-      <button onclick="switchTab('scl')" id="tab-scl" class="flex-1 py-3 px-4 font-semibold text-blue-600 border-b-2 border-blue-600">SCL 軟式換算</button>
-      <button onclick="switchTab('rgp')" id="tab-rgp" class="flex-1 py-3 px-4 font-semibold text-gray-500 hover:text-blue-600">RGP 球面硬式</button>
-      <button onclick="switchTab('toric')" id="tab-toric" class="flex-1 py-3 px-4 font-semibold text-gray-500 hover:text-blue-600">RGP Toric 散光</button>
-    </div>
-
-    <div id="content-scl" class="tab-content active p-6">
-      <h2 class="text-xl font-bold mb-4 border-b pb-2">SCL (Soft Contact Lens) 換算與商品搜尋</h2>
-      <div class="grid grid-cols-2 gap-4 mb-4">
-        <div><label class="block text-sm">眼鏡 SPH (度數)</label><input type="number" id="scl-sph" step="0.25" class="w-full border p-2 rounded"></div>
-        <div><label class="block text-sm">眼鏡 CYL (散光)</label><input type="number" id="scl-cyl" step="0.25" class="w-full border p-2 rounded"></div>
-        <div><label class="block text-sm">軸度 (Axis)</label><input type="number" id="scl-axis" class="w-full border p-2 rounded"></div>
-        <div><label class="block text-sm">頂點距離 V.D. (mm)</label><input type="number" id="scl-vd" value="12" class="w-full border p-2 rounded"></div>
-        <div><label class="block text-sm">平R / Flat K (mm)</label><input type="number" id="scl-k" step="0.01" class="w-full border p-2 rounded"></div>
-        <div><label class="block text-sm">廠牌 (Brand)</label>
-          <select id="scl-brand" class="w-full border p-2 rounded"><option value="A">品牌 A</option><option value="B">品牌 B</option></select>
-        </div>
-        <div><label class="block text-sm">週期 (Cycle)</label>
-          <select id="scl-cycle" class="w-full border p-2 rounded"><option value="daily">日拋</option><option value="monthly">月拋</option></select>
-        </div>
-      </div>
-      <button onclick="calcSCL()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">計算與搜尋</button>
-      
-      <div id="scl-result" class="mt-6 hidden bg-blue-50 p-4 rounded-lg">
-        <h3 class="font-bold mb-2">運算結果：</h3>
-        <p>建議度數 (SPH): <span id="res-scl-sph" class="font-bold"></span></p>
-        <p>建議散光 (CYL): <span id="res-scl-cyl" class="font-bold"></span></p>
-        <p>等效球面度數 (S.E.): <span id="res-scl-se" class="font-bold"></span></p>
-        <p>建議基弧 (BC): <span id="res-scl-bc" class="font-bold"></span></p>
-        <p class="text-sm text-gray-500 mt-2">* 系統已透過 Supabase 查詢對應產品 (需配置真實 API Key)</p>
-      </div>
-    </div>
-
-    <div id="content-rgp" class="tab-content p-6">
-      <h2 class="text-xl font-bold mb-4 border-b pb-2">RGP 球面硬式試片驗配</h2>
-      
-      <div class="space-y-4">
-        <div class="bg-gray-100 p-4 rounded">
-          <label class="block font-bold">Initial Input: 電腦驗光 K 值</label>
-          <div class="flex gap-2 mt-2">
-            <input type="number" id="rgp-r1" step="0.01" placeholder="R1 (平K)" class="border p-2 rounded w-1/2">
-            <input type="number" id="rgp-r2" step="0.01" placeholder="R2 (陡K)" class="border p-2 rounded w-1/2">
+    <div id="view-crm" class="view-content active max-w-5xl mx-auto">
+      <h2 class="text-2xl font-bold mb-6">客戶管理 (CRM)</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded shadow h-fit">
+          <h3 class="font-bold text-lg mb-4">新增客戶</h3>
+          <div class="space-y-3">
+            <input type="text" id="crm-name" placeholder="姓名" class="w-full border p-2 rounded">
+            <input type="text" id="crm-phone" placeholder="電話" class="w-full border p-2 rounded">
+            <input type="date" id="crm-dob" class="w-full border p-2 rounded">
+            <button onclick="addCustomer()" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">建立資料</button>
           </div>
-          <p class="text-blue-600 text-sm mt-1" id="rgp-hint-r">均 r 提示: [等待輸入] mm</p>
+        </div>
+        <div class="bg-white p-6 rounded shadow md:col-span-2">
+          <h3 class="font-bold text-lg mb-4">客戶列表</h3>
+          <table class="w-full text-left border-collapse">
+            <thead><tr class="bg-gray-100"><th class="p-2 border">姓名</th><th class="p-2 border">電話</th><th class="p-2 border">操作</th></tr></thead>
+            <tbody id="customer-list"></tbody>
+          </table>
+          
+          <div id="history-section" class="mt-8 hidden border-t pt-6">
+            <h3 class="font-bold text-lg mb-4 text-blue-800">驗配歷史紀錄: <span id="history-name"></span></h3>
+            <div id="history-records" class="space-y-3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-scl" class="view-content max-w-3xl bg-white p-8 rounded shadow">
+      <h2 class="text-2xl font-bold mb-6 border-b pb-2">軟式隱形眼鏡 (SCL) 換算</h2>
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <div><label class="block text-sm">SPH (度數)</label><input type="number" id="scl-sph" step="0.25" class="w-full border p-2 rounded"></div>
+        <div><label class="block text-sm">CYL (散光)</label><input type="number" id="scl-cyl" step="0.25" class="w-full border p-2 rounded"></div>
+        <div><label class="block text-sm">Axis (軸度)</label><input type="number" id="scl-axis" class="w-full border p-2 rounded"></div>
+        <div><label class="block text-sm">V.D. (mm)</label><input type="number" id="scl-vd" value="12" class="w-full border p-2 rounded"></div>
+        <div><label class="block text-sm">平R / Flat K (mm)</label><input type="number" id="scl-k" step="0.01" class="w-full border p-2 rounded"></div>
+      </div>
+      <button onclick="calcSCL()" class="bg-blue-600 text-white px-6 py-2 rounded">計算</button>
+      
+      <div id="scl-result" class="mt-6 hidden bg-blue-50 p-4 rounded border">
+        <p>建議度數: <span id="res-scl-sph" class="font-bold text-lg"></span> / 散光: <span id="res-scl-cyl" class="font-bold text-lg"></span></p>
+        <p>等效球面(S.E.): <span id="res-scl-se" class="font-bold text-lg"></span> | 建議基弧: <span id="res-scl-bc" class="font-bold text-lg"></span> mm</p>
+        <button onclick="saveRecord('scl')" class="mt-4 bg-green-600 text-white px-4 py-2 rounded text-sm">儲存至病歷</button>
+      </div>
+    </div>
+
+    <div id="view-rgp" class="view-content max-w-3xl bg-white p-8 rounded shadow">
+      <h2 class="text-2xl font-bold mb-6 border-b pb-2">RGP 球面硬式試片驗配</h2>
+      <div class="space-y-5">
+        <div class="bg-gray-100 p-4 rounded grid grid-cols-3 gap-2 border">
+          <div><label class="block text-sm font-bold">R1 (平K)</label><input type="number" id="rgp-r1" step="0.01" class="w-full border p-2 rounded" onchange="calcRgpStep1()"></div>
+          <div><label class="block text-sm font-bold">R2 (陡K)</label><input type="number" id="rgp-r2" step="0.01" class="w-full border p-2 rounded" onchange="calcRgpStep1()"></div>
+          <div><label class="block text-sm font-bold">CS (角膜直徑)</label><input type="number" id="rgp-cs" step="0.1" class="w-full border p-2 rounded border-blue-400" onchange="calcRgpStep1()"></div>
         </div>
 
-        <p class="font-bold text-red-600">優先使用 DIA: 9.8 mm</p>
+        <div class="bg-blue-50 p-3 rounded border text-blue-800 font-bold" id="rgp-step1-hint">
+          請輸入 R1, R2 與 CS 以獲取系統建議
+        </div>
 
         <div>
           <label class="block font-bold">所以現在有得戴的接近 DIA 是？</label>
           <input type="number" id="rgp-trial-dia" step="0.1" class="border p-2 rounded w-full mt-1" onchange="calcRgpStep3()">
         </div>
 
-        <p class="text-blue-600 font-bold" id="rgp-step3-hint"></p>
+        <div class="text-orange-600 font-bold" id="rgp-step3-hint"></div>
 
         <div>
-          <label class="block font-bold" id="rgp-step4-label">沒有預設基弧？輸入你現在要戴什麼 BC？</label>
-          <input type="number" id="rgp-actual-bc" step="0.05" class="border p-2 rounded w-full mt-1">
+          <label class="block font-bold">輸入你現在實際戴上的試片 BC？</label>
+          <input type="number" id="rgp-actual-bc" step="0.01" class="border p-2 rounded w-full mt-1">
         </div>
 
-        <div>
-          <label class="block font-bold">動態靜態都可以了就驗光下面輸入外加眼鏡處方 (OR)</label>
-          <div class="flex gap-2 mt-1">
+        <div class="border-t pt-4">
+          <label class="block font-bold mb-1">動態靜態都可以了就驗光下面輸入外加眼鏡處方</label>
+          <div class="flex gap-2">
             <input type="number" id="rgp-or-sph" step="0.25" placeholder="SPH" class="border p-2 rounded w-1/3">
             <input type="number" id="rgp-or-cyl" step="0.25" placeholder="CYL" class="border p-2 rounded w-1/3">
             <input type="number" id="rgp-or-vd" value="12" placeholder="V.D." class="border p-2 rounded w-1/3">
           </div>
         </div>
 
-        <div>
-          <label class="block font-bold">快完成了！你剛那鏡片幾度？</label>
-          <input type="number" id="rgp-trial-power" step="0.25" class="border p-2 rounded w-full mt-1">
+        <div class="grid grid-cols-2 gap-4">
+          <div><label class="block font-bold">快完成了！你剛那鏡片幾度？</label><input type="number" id="rgp-trial-power" step="0.25" class="border p-2 rounded w-full mt-1"></div>
+          <div><label class="block font-bold">你剛那個 DIA 確定要多少？</label><input type="number" id="rgp-final-dia" step="0.1" class="border p-2 rounded w-full mt-1"></div>
         </div>
 
-        <div>
-          <label class="block font-bold">你剛那個 DIA 確定要多少？要改趁現在！</label>
-          <input type="number" id="rgp-final-dia" step="0.1" class="border p-2 rounded w-full mt-1">
-        </div>
+        <button onclick="calcRGP()" class="bg-blue-600 text-white px-6 py-3 rounded font-bold w-full">計算最終處方</button>
 
-        <button onclick="calcRGP()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full">計算最終處方</button>
-
-        <div id="rgp-result" class="mt-4 hidden bg-green-50 p-4 rounded-lg border border-green-200">
+        <div id="rgp-result" class="mt-4 hidden bg-green-50 p-4 rounded border border-green-300">
           <h3 class="font-bold text-green-800 text-lg">搞定了！處方來了, 就這樣訂：</h3>
-          <p class="mt-2 text-lg">度數 (Power): <span id="res-rgp-power" class="font-bold text-xl"></span> D</p>
-          <p class="text-lg">基弧 (BC): <span id="res-rgp-bc" class="font-bold text-xl"></span> mm</p>
-          <p class="text-lg">直徑 (DIA): <span id="res-rgp-dia" class="font-bold text-xl"></span> mm</p>
+          <p class="text-lg mt-2">度數: <span id="res-rgp-power" class="font-bold text-2xl text-blue-600"></span> D</p>
+          <p class="text-lg">基弧: <span id="res-rgp-bc" class="font-bold text-2xl"></span> mm | 直徑: <span id="res-rgp-dia" class="font-bold text-2xl"></span> mm</p>
+          <button onclick="saveRecord('rgp')" class="mt-4 bg-green-600 text-white px-4 py-2 rounded text-sm">儲存至病歷</button>
         </div>
       </div>
     </div>
 
-    <div id="content-toric" class="tab-content p-6">
-      <h2 class="text-xl font-bold mb-4 border-b pb-2 text-purple-700">想配Toric RGP? 聽我勸 照步驟吧!</h2>
-      
-      <div class="space-y-4">
+    <div id="view-toric" class="view-content max-w-3xl bg-white p-8 rounded shadow">
+      <h2 class="text-2xl font-bold mb-4 border-b pb-2 text-purple-700">想配Toric RGP? 聽我勸 照步驟吧!</h2>
+      <div class="space-y-5">
         <div>
-          <label class="block font-bold">1. 先驗光, 配出眼鏡理想度數, 輸入到下面</label>
-          <div class="grid grid-cols-2 gap-2 mt-2">
+          <label class="block font-bold mb-2">1. 先驗光, 配出眼鏡理想度數, 並輸入角膜與 CS</label>
+          <div class="grid grid-cols-3 gap-2">
             <input type="number" id="t-sph" step="0.25" placeholder="SPH" class="border p-2 rounded">
             <input type="number" id="t-cyl" step="0.25" placeholder="CYL" class="border p-2 rounded">
-            <input type="number" id="t-axis" placeholder="Axis" class="border p-2 rounded">
             <input type="number" id="t-vd" value="12" placeholder="V.D. (mm)" class="border p-2 rounded">
-            <input type="number" id="t-k1" step="0.25" placeholder="Corneal K1 (Diopter, 平K)" class="border p-2 rounded">
-            <input type="number" id="t-k2" step="0.25" placeholder="Corneal K2 (Diopter, 陡K)" class="border p-2 rounded">
+            <input type="number" id="t-k1" step="0.25" placeholder="K1 (平K Diopter)" class="border p-2 rounded" onchange="calcToricStep2()">
+            <input type="number" id="t-k2" step="0.25" placeholder="K2 (陡K Diopter)" class="border p-2 rounded">
+            <input type="number" id="t-cs" step="0.1" placeholder="CS (角膜直徑)" class="border p-2 rounded border-purple-400" onchange="calcToricStep2()">
           </div>
         </div>
 
-        <div class="bg-yellow-50 p-3 rounded border border-yellow-200">
-          <p class="font-bold text-yellow-800">2. 拿出試片：DIA 大等於 9.8 mm, BC 大約 7.80（或 7.90）或稍緊，給客人體驗比較保險</p>
+        <div class="bg-yellow-50 p-4 rounded border border-yellow-300">
+          <p class="font-bold text-yellow-800" id="toric-step2-hint">2. 拿出試片：建議 DIA [待計算] mm, BC 大約 [待計算] mm 給客人體驗比較保險</p>
         </div>
 
-        <div class="bg-gray-100 p-3 rounded border">
-          <p class="font-bold">3. 再來沒你的事了下面自動處理</p>
-          <button onclick="calcToric()" class="mt-2 bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 w-full">執行自動運算</button>
+        <div class="bg-gray-100 p-4 rounded border">
+          <p class="font-bold mb-2">3. 再來沒你的事了下面自動處理</p>
+          <button onclick="calcToric()" class="bg-purple-600 text-white px-6 py-2 rounded font-bold w-full">執行雙軸運算</button>
         </div>
 
-        <div id="toric-result" class="mt-4 hidden bg-purple-50 p-4 rounded-lg border border-purple-200">
+        <div id="toric-result" class="mt-4 hidden bg-purple-50 p-5 rounded border border-purple-300">
           <h3 class="font-bold text-purple-800 text-lg">4. 搞定了！處方來了就這樣訂</h3>
-          <ul class="mt-2 text-lg space-y-1">
-            <li>弧度 1 (平): <span id="res-t-bc1" class="font-bold text-xl"></span> mm / 度數 1: <span id="res-t-p1" class="font-bold text-xl"></span> D</li>
-            <li>弧度 2 (陡): <span id="res-t-bc2" class="font-bold text-xl"></span> mm / 度數 2: <span id="res-t-p2" class="font-bold text-xl"></span> D</li>
-            <li>直徑: <span class="font-bold text-xl">9.8</span> mm</li>
-          </ul>
+          <div class="mt-3 grid grid-cols-2 gap-4">
+            <div class="bg-white p-3 rounded border">
+              <p class="text-sm text-gray-500">平坦軸 (FK)</p>
+              <p class="text-lg">弧度: <span id="res-t-bc1" class="font-bold text-xl text-blue-600"></span> mm</p>
+              <p class="text-lg">度數: <span id="res-t-p1" class="font-bold text-xl text-blue-600"></span> D</p>
+            </div>
+            <div class="bg-white p-3 rounded border">
+              <p class="text-sm text-gray-500">陡峭軸 (SK)</p>
+              <p class="text-lg">弧度: <span id="res-t-bc2" class="font-bold text-xl text-red-600"></span> mm</p>
+              <p class="text-lg">度數: <span id="res-t-p2" class="font-bold text-xl text-red-600"></span> D</p>
+            </div>
+          </div>
+          <p class="mt-3 font-bold">直徑: <span id="res-t-dia" class="text-xl"></span> mm</p>
+          <button onclick="saveRecord('toric')" class="mt-4 bg-green-600 text-white px-4 py-2 rounded text-sm">儲存至病歷</button>
         </div>
       </div>
     </div>
+
+  </div>
+
+  <div id="print-area" class="hidden bg-white">
+    <h1 class="text-2xl font-bold border-b-2 border-black pb-2 mb-4">隱形眼鏡驗配處方報告</h1>
+    <div class="mb-6">
+      <p><strong>客戶姓名：</strong> <span id="print-name"></span></p>
+      <p><strong>聯絡電話：</strong> <span id="print-phone"></span></p>
+      <p><strong>列印時間：</strong> <span id="print-date"></span></p>
+    </div>
+    <div id="print-content" class="border p-4 rounded text-lg space-y-2"></div>
   </div>
 
   <script>
-    // Supabase Initialization (修正變數名稱避免衝突)
-  const supabaseUrl = 'https://YOUR_PROJECT_ID.supabase.co';
-  const supabaseKey = 'YOUR_ANON_KEY';
-  const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-  // Tab Switching Logic
-  function switchTab(tab) {
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('button[id^="tab-"]').forEach(el => {
-      el.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
-      el.classList.add('text-gray-500');
-    });
-    document.getElementById(`content-${tab}`).classList.add('active');
-    const activeBtn = document.getElementById(`tab-${tab}`);
-    activeBtn.classList.remove('text-gray-500');
-    activeBtn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
-  }
-
-  // Utility: Round to 0.25
-  function round025(val) {
-    return Math.round(val * 4) / 4;
-  }
-
-  // Utility: Vertex Calculation
-  function calcVertex(power, vd_mm) {
-    if (!power) return 0;
-    const d = vd_mm / 1000;
-    return power / (1 - d * power);
-  }
-
-  // --- Tab 1: SCL Logic ---
-  async function calcSCL() {
-    const sph = parseFloat(document.getElementById('scl-sph').value) || 0;
-    const cyl = parseFloat(document.getElementById('scl-cyl').value) || 0;
-    const vd = parseFloat(document.getElementById('scl-vd').value) || 12;
-    const flatK = parseFloat(document.getElementById('scl-k').value) || 0;
-
-    const cl_sph_raw = calcVertex(sph, vd);
-    const glasses_total = sph + cyl;
-    const cl_total_raw = calcVertex(glasses_total, vd);
-    const cl_cyl_raw = cl_total_raw - cl_sph_raw;
-
-    const scl_sph_rounded = round025(cl_sph_raw);
-    const scl_cyl_rounded = round025(cl_cyl_raw);
-    const se = round025(scl_sph_rounded + (scl_cyl_rounded / 2));
-    const bc = (flatK * 1.1).toFixed(2);
-
-    document.getElementById('res-scl-sph').innerText = scl_sph_rounded > 0 ? `+${scl_sph_rounded.toFixed(2)}` : scl_sph_rounded.toFixed(2);
-    document.getElementById('res-scl-cyl').innerText = scl_cyl_rounded.toFixed(2);
-    document.getElementById('res-scl-se').innerText = se > 0 ? `+${se.toFixed(2)}` : se.toFixed(2);
-    document.getElementById('res-scl-bc').innerText = bc;
-    document.getElementById('scl-result').classList.remove('hidden');
-
-    // Supabase Query (使用修正後的 supabaseClient)
-    try {
-      const { data, error } = await supabaseClient
-        .from('scl_products')
-        .select('*')
-        .eq('sph', scl_sph_rounded)
-        .eq('cyl', scl_cyl_rounded);
-      console.log("Supabase 查詢結果:", data);
-    } catch (e) {
-      console.log("Supabase 尚未配置完整 API Key:", e);
-    }
-  }
-
-  // --- Tab 2: RGP Logic ---
-  document.getElementById('rgp-r1').addEventListener('input', updateRgpHint);
-  document.getElementById('rgp-r2').addEventListener('input', updateRgpHint);
-
-  function updateRgpHint() {
-    const r1 = parseFloat(document.getElementById('rgp-r1').value) || 0;
-    const r2 = parseFloat(document.getElementById('rgp-r2').value) || 0;
-    if(r1 && r2) {
-      const avgR = ((r1 + r2) / 2).toFixed(2);
-      document.getElementById('rgp-hint-r').innerText = `均 r 提示: ${avgR} mm`;
-    }
-  }
-
-  function calcRgpStep3() {
-    const r1 = parseFloat(document.getElementById('rgp-r1').value);
-    const trialDia = parseFloat(document.getElementById('rgp-trial-dia').value);
-    if (r1 && trialDia) {
-      const suggestedBC = (r1 - (9.8 - trialDia) * 0.5).toFixed(2);
-      document.getElementById('rgp-step3-hint').innerText = `你 DIA ${trialDia}，那你 BC 就拿 ${suggestedBC} 先試看染色`;
-      document.getElementById('rgp-step4-label').innerText = `沒有 ${suggestedBC}？或 ${suggestedBC} 不好？輸入你現在要戴什麼 BC？`;
-    }
-  }
-
-  function calcRGP() {
-    const orSph = parseFloat(document.getElementById('rgp-or-sph').value) || 0;
-    const vd = parseFloat(document.getElementById('rgp-or-vd').value) || 12;
-    const trialPower = parseFloat(document.getElementById('rgp-trial-power').value) || 0;
-    const actualBc = document.getElementById('rgp-actual-bc').value;
-    const finalDia = document.getElementById('rgp-final-dia').value;
-
-    const vertexedOr = round025(calcVertex(orSph, vd));
-    const finalPower = trialPower + vertexedOr;
-
-    document.getElementById('res-rgp-power').innerText = finalPower > 0 ? `+${finalPower.toFixed(2)}` : finalPower.toFixed(2);
-    document.getElementById('res-rgp-bc').innerText = actualBc;
-    document.getElementById('res-rgp-dia').innerText = finalDia;
-    document.getElementById('rgp-result').classList.remove('hidden');
-  }
-
-  // --- Tab 3: RGP Toric Logic ---
-  function calcToric() {
-    const sph = parseFloat(document.getElementById('t-sph').value) || 0;
-    const cyl = parseFloat(document.getElementById('t-cyl').value) || 0;
-    const vd = parseFloat(document.getElementById('t-vd').value) || 12;
-    const k1 = parseFloat(document.getElementById('t-k1').value) || 0;
-    const k2 = parseFloat(document.getElementById('t-k2').value) || 0;
-
-    const meridian1_raw = sph;
-    const meridian2_raw = sph + cyl;
-
-    const vertex_1 = round025(calcVertex(meridian1_raw, vd));
-    const vertex_2 = round025(calcVertex(meridian2_raw, vd));
-
-    const lens_fk_diopter = k1 - 0.25;
-    const lens_sk_diopter = k2 - 1.00;
-
-    const bc1_mm = (337.5 / lens_fk_diopter).toFixed(2);
-    const bc2_mm = (337.5 / lens_sk_diopter).toFixed(2);
-
-    const final_power_1 = vertex_1 - (-0.25);
-    const final_power_2 = vertex_2 - (-1.00);
-
-    document.getElementById('res-t-bc1').innerText = bc1_mm;
-    document.getElementById('res-t-p1').innerText = final_power_1 > 0 ? `+${final_power_1.toFixed(2)}` : final_power_1.toFixed(2);
-    document.getElementById('res-t-bc2').innerText = bc2_mm;
-    document.getElementById('res-t-p2').innerText = final_power_2 > 0 ? `+${final_power_2.toFixed(2)}` : final_power_2.toFixed(2);
+    // --- 系統狀態與 Supabase 初始化 ---
+    const supabaseClient = window.supabase.createClient('https://YOUR_PROJECT_ID.supabase.co', 'YOUR_KEY');
     
-    document.getElementById('toric-result').classList.remove('hidden');
-  }
+    // Memory Fallback (若無 Supabase 金鑰也能運作)
+    let customers = [];
+    let records = [];
+    let activeCustomer = null;
+    let tempResult = null; // 暫存最後一次計算的結果
+
+    // --- UI 導覽邏輯 ---
+    function switchView(view) {
+      document.querySelectorAll('.view-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('[id^="nav-"]').forEach(el => {
+        el.classList.remove('bg-blue-600', 'text-white');
+        el.classList.add('text-gray-300');
+      });
+      document.getElementById(`view-${view}`).classList.add('active');
+      const activeNav = document.getElementById(`nav-${view}`);
+      activeNav.classList.remove('text-gray-300');
+      activeNav.classList.add('bg-blue-600', 'text-white');
+      
+      const eyeSelector = document.getElementById('eye-selector');
+      if(view === 'crm') eyeSelector.classList.add('hidden');
+      else eyeSelector.classList.remove('hidden');
+    }
+
+    // --- CRM 核心邏輯 ---
+    function getSelectedEye() {
+      return document.querySelector('input[name="eye"]:checked').value;
+    }
+
+    function setActiveCustomer(id, name) {
+      activeCustomer = { id, name };
+      document.getElementById('active-customer-name').innerText = name;
+      alert(`已選擇客戶：${name}，現在您可以前往計算機驗配。`);
+    }
+
+    async function addCustomer() {
+      const name = document.getElementById('crm-name').value;
+      const phone = document.getElementById('crm-phone').value;
+      const dob = document.getElementById('crm-dob').value;
+      if (!name) return alert("請填寫姓名");
+
+      const newCustomer = { id: Date.now().toString(), name, phone, dob, created_at: new Date().toLocaleString() };
+      customers.push(newCustomer);
+      
+      // Try Supabase (Silent fail to fallback)
+      try { await supabaseClient.from('customers').insert([newCustomer]); } catch(e){}
+
+      document.getElementById('crm-name').value = '';
+      document.getElementById('crm-phone').value = '';
+      renderCustomers();
+      setActiveCustomer(newCustomer.id, newCustomer.name);
+    }
+
+    function renderCustomers() {
+      const tbody = document.getElementById('customer-list');
+      tbody.innerHTML = customers.map(c => `
+        <tr class="border-b">
+          <td class="p-2 font-bold">${c.name}</td>
+          <td class="p-2">${c.phone || '-'}</td>
+          <td class="p-2 space-x-2">
+            <button onclick="setActiveCustomer('${c.id}', '${c.name}')" class="text-blue-600 hover:underline">選擇</button>
+            <button onclick="viewHistory('${c.id}', '${c.name}')" class="text-purple-600 hover:underline">歷史</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function viewHistory(id, name) {
+      document.getElementById('history-section').classList.remove('hidden');
+      document.getElementById('history-name').innerText = name;
+      const userRecords = records.filter(r => r.customer_id === id);
+      
+      const container = document.getElementById('history-records');
+      if(userRecords.length === 0) {
+        container.innerHTML = "<p class='text-gray-500'>無驗配紀錄。</p>";
+        return;
+      }
+
+      container.innerHTML = userRecords.map(r => `
+        <div class="p-3 bg-white border rounded flex justify-between items-center shadow-sm">
+          <div>
+            <span class="bg-gray-200 text-xs px-2 py-1 rounded font-bold">${r.eye}</span>
+            <span class="font-bold text-blue-700 ml-2 uppercase">${r.type}</span>
+            <span class="text-sm text-gray-500 ml-2">${r.created_at}</span>
+          </div>
+          <button onclick='printReport(${JSON.stringify(r)})' class="bg-gray-800 text-white px-3 py-1 text-sm rounded">列印報告</button>
+        </div>
+      `).join('');
+    }
+
+    async function saveRecord(type) {
+      if(!activeCustomer) return alert("請先至 CRM 選擇或建立客戶！");
+      if(!tempResult) return alert("請先完成計算！");
+
+      const record = {
+        id: Date.now().toString(),
+        customer_id: activeCustomer.id,
+        eye: getSelectedEye(),
+        type: type,
+        parameters: tempResult,
+        created_at: new Date().toLocaleString()
+      };
+      
+      records.push(record);
+      try { await supabaseClient.from('fitting_records').insert([record]); } catch(e){}
+      
+      alert(`已成功儲存 ${activeCustomer.name} 的 ${record.eye} 眼處方紀錄！`);
+    }
+
+    // --- 列印報表邏輯 ---
+    function printReport(r) {
+      document.getElementById('print-name').innerText = activeCustomer.name;
+      document.getElementById('print-phone').innerText = customers.find(c=>c.id===r.customer_id)?.phone || '';
+      document.getElementById('print-date').innerText = r.created_at;
+      
+      let html = `<p><strong>眼別：</strong> ${r.eye}</p><p><strong>鏡片類型：</strong> ${r.type.toUpperCase()}</p><hr>`;
+      
+      if(r.type === 'scl') {
+        html += `<p>SPH: ${r.parameters.sph} / CYL: ${r.parameters.cyl}</p><p>BC: ${r.parameters.bc} mm</p>`;
+      } else if(r.type === 'rgp') {
+        html += `<p>度數 (Power): ${r.parameters.power} D</p><p>基弧 (BC): ${r.parameters.bc} mm</p><p>直徑 (DIA): ${r.parameters.dia} mm</p>`;
+      } else if(r.type === 'toric') {
+        html += `<p><strong>平坦軸:</strong> BC ${r.parameters.bc1} mm / 度數 ${r.parameters.p1} D</p>
+                 <p><strong>陡峭軸:</strong> BC ${r.parameters.bc2} mm / 度數 ${r.parameters.p2} D</p>
+                 <p><strong>直徑:</strong> ${r.parameters.dia} mm</p>`;
+      }
+      
+      document.getElementById('print-content').innerHTML = html;
+      window.print();
+    }
+
+    // --- 共用數學工具 ---
+    function round025(val) { return Math.round(val * 4) / 4; }
+    function calcVertex(power, vd_mm) {
+      if (!power) return 0;
+      return power / (1 - (vd_mm / 1000) * power);
+    }
+    function formatD(val) { return val > 0 ? `+${val.toFixed(2)}` : val.toFixed(2); }
+
+    // --- View 2: SCL ---
+    function calcSCL() {
+      const sph = parseFloat(document.getElementById('scl-sph').value) || 0;
+      const cyl = parseFloat(document.getElementById('scl-cyl').value) || 0;
+      const vd = parseFloat(document.getElementById('scl-vd').value) || 12;
+      const flatK = parseFloat(document.getElementById('scl-k').value) || 0;
+
+      const cl_sph_raw = calcVertex(sph, vd);
+      const cl_total_raw = calcVertex(sph + cyl, vd);
+      
+      const scl_sph_rounded = round025(cl_sph_raw);
+      const scl_cyl_rounded = round025(cl_total_raw - cl_sph_raw);
+      const se = round025(scl_sph_rounded + (scl_cyl_rounded / 2));
+      const bc = (flatK * 1.1).toFixed(2);
+
+      document.getElementById('res-scl-sph').innerText = formatD(scl_sph_rounded);
+      document.getElementById('res-scl-cyl').innerText = scl_cyl_rounded.toFixed(2);
+      document.getElementById('res-scl-se').innerText = formatD(se);
+      document.getElementById('res-scl-bc').innerText = bc;
+      document.getElementById('scl-result').classList.remove('hidden');
+
+      tempResult = { sph: formatD(scl_sph_rounded), cyl: scl_cyl_rounded, se: formatD(se), bc };
+    }
+
+    // --- View 3: RGP Spherical ---
+    let rgpAvgR = 0, rgpSuggestedDia = 0;
+    function calcRgpStep1() {
+      const r1 = parseFloat(document.getElementById('rgp-r1').value) || 0;
+      const r2 = parseFloat(document.getElementById('rgp-r2').value) || 0;
+      const cs = parseFloat(document.getElementById('rgp-cs').value) || 0;
+      if(r1 && r2 && cs) {
+        rgpAvgR = (r1 + r2) / 2;
+        rgpSuggestedDia = cs - 2.0;
+        document.getElementById('rgp-step1-hint').innerText = `根據客人 CS，系統建議最佳 DIA: ${rgpSuggestedDia.toFixed(1)} mm, 基礎 BC: ${rgpAvgR.toFixed(2)} mm`;
+      }
+    }
+
+    function calcRgpStep3() {
+      const trialDia = parseFloat(document.getElementById('rgp-trial-dia').value);
+      if(rgpAvgR && rgpSuggestedDia && trialDia) {
+        // SAM-FAP: 直徑每大0.1mm，基弧平0.01mm (數字變大)
+        const adjustedBC = rgpAvgR + ((trialDia - rgpSuggestedDia) * 0.1);
+        document.getElementById('rgp-step3-hint').innerText = `你 DIA 改用 ${trialDia.toFixed(1)}，那你 BC 就拿 ${adjustedBC.toFixed(2)} 先試看染色`;
+      }
+    }
+
+    function calcRGP() {
+      const orSph = parseFloat(document.getElementById('rgp-or-sph').value) || 0;
+      const vd = parseFloat(document.getElementById('rgp-or-vd').value) || 12;
+      const trialPower = parseFloat(document.getElementById('rgp-trial-power').value) || 0;
+      const actualBc = document.getElementById('rgp-actual-bc').value;
+      const finalDia = document.getElementById('rgp-final-dia').value;
+
+      const finalPower = trialPower + round025(calcVertex(orSph, vd));
+
+      document.getElementById('res-rgp-power').innerText = formatD(finalPower);
+      document.getElementById('res-rgp-bc').innerText = actualBc;
+      document.getElementById('res-rgp-dia').innerText = finalDia;
+      document.getElementById('rgp-result').classList.remove('hidden');
+
+      tempResult = { power: formatD(finalPower), bc: actualBc, dia: finalDia };
+    }
+
+    // --- View 4: RGP Toric ---
+    function calcToricStep2() {
+      const k1 = parseFloat(document.getElementById('t-k1').value) || 0;
+      const cs = parseFloat(document.getElementById('t-cs').value) || 0;
+      if(k1 && cs) {
+        const trialDia = (cs - 2.0).toFixed(1);
+        const trialBc = (337.5 / k1).toFixed(2);
+        document.getElementById('toric-step2-hint').innerText = `2. 拿出試片：建議 DIA ${trialDia} mm, BC 大約 ${trialBc} mm 給客人體驗比較保險`;
+      }
+    }
+
+    function calcToric() {
+      const sph = parseFloat(document.getElementById('t-sph').value) || 0;
+      const cyl = parseFloat(document.getElementById('t-cyl').value) || 0;
+      const vd = parseFloat(document.getElementById('t-vd').value) || 12;
+      const k1 = parseFloat(document.getElementById('t-k1').value) || 0;
+      const k2 = parseFloat(document.getElementById('t-k2').value) || 0;
+      const cs = parseFloat(document.getElementById('t-cs').value) || 0;
+
+      const vertex_1 = round025(calcVertex(sph, vd));
+      const vertex_2 = round025(calcVertex(sph + cyl, vd));
+
+      const bc1_mm = (337.5 / (k1 - 0.25)).toFixed(2);
+      const bc2_mm = (337.5 / (k2 - 1.00)).toFixed(2);
+
+      const p1 = vertex_1 - (-0.25);
+      const p2 = vertex_2 - (-1.00);
+      const finalDia = cs ? (cs - 2.0).toFixed(1) : 9.8;
+
+      document.getElementById('res-t-bc1').innerText = bc1_mm;
+      document.getElementById('res-t-p1').innerText = formatD(p1);
+      document.getElementById('res-t-bc2').innerText = bc2_mm;
+      document.getElementById('res-t-p2').innerText = formatD(p2);
+      document.getElementById('res-t-dia').innerText = finalDia;
+      document.getElementById('toric-result').classList.remove('hidden');
+
+      tempResult = { bc1: bc1_mm, p1: formatD(p1), bc2: bc2_mm, p2: formatD(p2), dia: finalDia };
+    }
   </script>
 </body>
 </html>
