@@ -86,21 +86,28 @@
           <h2 class="text-2xl font-bold text-gray-800">軟式隱形眼鏡 (SCL) 換算</h2>
           <button onclick="saveCombinedRecord('scl')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-bold shadow">💾 儲存雙眼病歷</button>
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
           <div><label class="block text-sm font-bold text-gray-600">SPH (度數)</label><input type="number" id="scl-sph" step="0.25" class="w-full border p-2 rounded shadow-inner"></div>
           <div><label class="block text-sm font-bold text-gray-600">CYL (散光)</label><input type="number" id="scl-cyl" step="0.25" class="w-full border p-2 rounded shadow-inner"></div>
           <div><label class="block text-sm font-bold text-gray-600">Axis (軸度)</label><input type="number" id="scl-axis" class="w-full border p-2 rounded shadow-inner"></div>
           <div><label class="block text-sm font-bold text-gray-600">V.D. (mm)</label><input type="number" id="scl-vd" value="12" class="w-full border p-2 rounded shadow-inner"></div>
           <div><label class="block text-sm font-bold text-gray-600">平R / Flat K (mm)</label><input type="number" id="scl-k" step="0.01" class="w-full border p-2 rounded shadow-inner"></div>
-          <div><label class="block text-sm font-bold text-purple-600">ADD (老花選填)</label><input type="number" id="scl-add" step="0.25" placeholder="例如: +1.50" class="w-full border border-purple-300 bg-purple-50 p-2 rounded shadow-inner"></div>
+          <div><label class="block text-sm font-bold text-purple-600">ADD (老花選填)</label><input type="text" id="scl-add" placeholder="例如: +1.50 或 High" class="w-full border border-purple-300 bg-purple-50 p-2 rounded shadow-inner"></div>
         </div>
+        
+        <div class="mb-6">
+          <label class="block text-sm font-bold text-gray-600 mb-1">備註 (Notes)</label>
+          <input type="text" id="scl-notes" placeholder="紀錄試戴狀況、鏡片廠牌或其他備註..." class="w-full border p-2 rounded shadow-inner">
+        </div>
+
         <button onclick="calcSCL()" class="bg-gray-800 text-white px-8 py-3 rounded-lg font-bold hover:bg-gray-900 shadow">計算當前眼別</button>
         
         <div id="scl-result" class="mt-6 hidden bg-white p-5 rounded-lg border-2 border-dashed border-gray-400">
           <h3 class="font-bold text-gray-500 mb-2">當前眼別暫存結果：</h3>
           <p class="text-lg">建議度數: <span id="res-scl-sph" class="font-bold text-2xl"></span> / 散光: <span id="res-scl-cyl" class="font-bold text-2xl"></span></p>
           <p class="text-lg">等效球面(S.E.): <span id="res-scl-se" class="font-bold text-2xl"></span> | 建議基弧: <span id="res-scl-bc" class="font-bold text-2xl"></span> mm</p>
-          <p class="text-lg text-purple-700">ADD: <span id="res-scl-add" class="font-bold text-2xl"></span></p>
+          <p class="text-lg text-purple-700">ADD: <span id="res-scl-add" class="font-bold text-xl"></span></p>
+          <p class="text-md text-gray-600 mt-2">備註: <span id="res-scl-notes" class="font-bold text-gray-800"></span></p>
         </div>
       </div>
 
@@ -146,12 +153,18 @@
             <div><label class="block font-bold text-gray-700">你剛那個 DIA 確定要多少？</label><input type="number" id="rgp-final-dia" step="0.1" class="border p-3 rounded w-full mt-2 shadow-inner"></div>
           </div>
 
+          <div>
+            <label class="block font-bold text-gray-700 mb-1">備註 (Notes)</label>
+            <input type="text" id="rgp-notes" placeholder="紀錄螢光圖狀況或其他備註..." class="border p-3 rounded w-full shadow-inner">
+          </div>
+
           <button onclick="calcRGP()" class="bg-gray-800 text-white px-6 py-4 rounded-lg font-bold w-full text-lg hover:bg-gray-900 shadow-md">計算當前眼別</button>
 
           <div id="rgp-result" class="mt-4 hidden bg-white p-5 rounded-lg border-2 border-dashed border-gray-400">
             <h3 class="font-bold text-gray-500 mb-2">當前眼別暫存結果：</h3>
             <p class="text-xl">度數: <span id="res-rgp-power" class="font-bold text-3xl"></span> D</p>
             <p class="text-xl mt-2">基弧: <span id="res-rgp-bc" class="font-bold text-2xl"></span> mm | 直徑: <span id="res-rgp-dia" class="font-bold text-2xl"></span> mm</p>
+            <p class="text-md text-gray-600 mt-2 border-t pt-2">備註: <span id="res-rgp-notes" class="font-bold text-gray-800"></span></p>
           </div>
         </div>
       </div>
@@ -178,6 +191,11 @@
             <p class="font-bold text-yellow-800" id="toric-step2-hint">2. 拿出試片：建議 DIA [待計算] mm, BC 大約 [待計算] mm 給客人體驗比較保險</p>
           </div>
 
+          <div>
+            <label class="block font-bold text-gray-700 mb-1">備註 (Notes)</label>
+            <input type="text" id="toric-notes" placeholder="紀錄鏡片旋轉、螢光圖狀況或其他備註..." class="border p-3 rounded w-full shadow-inner">
+          </div>
+
           <div class="bg-gray-800 p-5 rounded-lg shadow-md text-center">
             <p class="font-bold mb-3 text-white text-lg">3. 再來沒你的事了下面自動處理</p>
             <button onclick="calcToric()" class="bg-purple-500 text-white px-8 py-3 rounded-lg font-bold w-full hover:bg-purple-600 text-lg transition-colors">執行雙軸運算 (當前眼別)</button>
@@ -198,6 +216,7 @@
               </div>
             </div>
             <p class="mt-4 font-bold text-xl text-center bg-purple-100 py-2 rounded">直徑: <span id="res-t-dia" class="text-2xl text-purple-800"></span> mm</p>
+            <p class="text-md text-gray-600 mt-3 border-t border-purple-200 pt-2 text-center">備註: <span id="res-t-notes" class="font-bold text-gray-800"></span></p>
           </div>
         </div>
       </div>
@@ -234,25 +253,22 @@
 
   <script>
     // ==========================================
-    // 1. SUPABASE 設定區塊 (已填入您的金鑰)
+    // 1. SUPABASE 設定區塊
     // ==========================================
     const supabaseUrl = 'https://pyyszbkcemqvmrecokwt.supabase.co';
     const supabaseKey = 'sb_publishable_kVgIy7INN2ohTMbsdh7PZg_TWG4LH7p';
     const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
     
-    // --- 狀態管理 ---
     let customers = [];
     let records = [];
     let activeCustomer = null;
     
-    // 雙眼暫存區 (OD/OS 獨立儲存)
     let sessionData = {
       scl: { OD: null, OS: null },
       rgp: { OD: null, OS: null },
       toric: { OD: null, OS: null }
     };
 
-    // --- 載入 Supabase 客戶資料 (若連線成功) ---
     async function loadCustomers() {
       try {
         const { data, error } = await supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
@@ -261,7 +277,6 @@
     }
     window.onload = loadCustomers;
 
-    // --- 顏色切換與 UI 導覽邏輯 ---
     const workspace = document.getElementById('workspace');
     function updateWorkspaceColor() {
       const eye = getSelectedEye();
@@ -273,9 +288,8 @@
     document.querySelectorAll('input[name="eye"]').forEach(radio => {
       radio.addEventListener('change', () => {
         updateWorkspaceColor();
-        // 清空顯示結果，提醒使用者這是另一眼的輸入
         document.querySelectorAll('[id^="res-"]').forEach(el => el.innerText = '');
-        document.querySelectorAll('.hidden.bg-white').forEach(el => el.classList.add('hidden')); // 隱藏結果框
+        document.querySelectorAll('.hidden.bg-white').forEach(el => el.classList.add('hidden')); 
       });
     });
 
@@ -301,7 +315,6 @@
       }
     }
 
-    // --- CRM 核心邏輯 ---
     function getSelectedEye() { return document.querySelector('input[name="eye"]:checked').value; }
 
     function setActiveCustomer(id, name) {
@@ -316,15 +329,33 @@
       const dob = document.getElementById('crm-dob').value;
       if (!name) return alert("請填寫姓名");
 
-      const newCustomer = { id: Date.now().toString(), name, phone, dob, created_at: new Date().toISOString() };
-      customers.unshift(newCustomer); // 加到最前面
-      
-      try { await supabaseClient.from('customers').insert([newCustomer]); } catch(e){}
+      const dbCustomer = { name: name, phone: phone };
+      if (dob) dbCustomer.dob = dob;
 
-      document.getElementById('crm-name').value = '';
-      document.getElementById('crm-phone').value = '';
-      renderCustomers();
-      setActiveCustomer(newCustomer.id, newCustomer.name);
+      try {
+        const { data, error } = await supabaseClient.from('customers').insert([dbCustomer]).select();
+
+        if (error) {
+          console.error("資料庫寫入失敗:", error);
+          alert("新增客戶失敗: " + error.message);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          const newCustomer = data[0];
+          customers.unshift(newCustomer);
+          
+          document.getElementById('crm-name').value = '';
+          document.getElementById('crm-phone').value = '';
+          document.getElementById('crm-dob').value = '';
+          
+          renderCustomers();
+          setActiveCustomer(newCustomer.id, newCustomer.name);
+        }
+      } catch (e) {
+        console.error("系統錯誤:", e);
+        alert("發生未知的系統錯誤，請檢查網路連線。");
+      }
     }
 
     function renderCustomers() {
@@ -348,7 +379,6 @@
       document.getElementById('history-section').classList.remove('hidden');
       document.getElementById('history-name').innerText = name;
       
-      // 嘗試從資料庫撈該客人的紀錄
       try {
         const { data } = await supabaseClient.from('fitting_records').select('*').eq('customer_id', id).order('created_at', { ascending: false });
         if(data) records = data;
@@ -375,7 +405,6 @@
       `}).join('');
     }
 
-    // --- 雙眼合併儲存邏輯 ---
     async function saveCombinedRecord(type) {
       if(!activeCustomer) return alert("❌ 請先至左側選單的「客戶管理」選擇或建立一位客戶！");
       
@@ -387,43 +416,60 @@
       }
 
       const record = {
-        id: Date.now().toString(),
         customer_id: activeCustomer.id,
-        eye: "OU", // 雙眼合併標記
+        eye: "OU", 
         type: type,
-        parameters: { OD: currentOD, OS: currentOS },
-        created_at: new Date().toISOString()
+        parameters: { OD: currentOD, OS: currentOS }
       };
       
-      records.push(record);
       try { 
-        const { error } = await supabaseClient.from('fitting_records').insert([record]); 
-        if(error) console.error(error);
-      } catch(e){}
+        const { data, error } = await supabaseClient.from('fitting_records').insert([record]).select();
+        if (error) {
+          console.error("病歷儲存失敗:", error);
+          return alert("儲存病歷失敗：" + error.message);
+        }
+        if (data && data.length > 0) records.push(data[0]);
+      } catch(e) {
+        console.error("系統錯誤:", e);
+        return alert("發生未知的系統錯誤，病歷無法儲存。");
+      }
       
       alert(`✅ 已成功儲存 ${activeCustomer.name} 的 ${type.toUpperCase()} 雙眼處方紀錄！\n若要列印，請前往客戶管理的「病歷」查詢。`);
       
-      // 清空暫存避免重複儲存
+      // 清空暫存，並清空輸入框內的備註，避免下一眼共用
       sessionData[type] = { OD: null, OS: null };
+      document.getElementById('scl-notes').value = '';
+      document.getElementById('rgp-notes').value = '';
+      document.getElementById('toric-notes').value = '';
     }
 
-    // --- 列印報表生成 ---
+    // --- 列印報表生成 (加入備註顯示) ---
     function generateEyeHtml(eyeData, type) {
       if(!eyeData) return `<p class="text-gray-400 italic text-2xl mt-4">無驗配資料</p>`;
       
+      let html = '';
       if(type === 'scl') {
-        return `<p class="mt-2"><strong>SPH:</strong> ${eyeData.sph} / <strong>CYL:</strong> ${eyeData.cyl}</p>
-                <p class="mt-2"><strong>基弧 (BC):</strong> ${eyeData.bc} mm</p>
-                ${eyeData.add ? `<p class="mt-2 text-purple-700"><strong>ADD:</strong> ${eyeData.add}</p>` : ''}`;
+        html += `<p class="mt-2"><strong>SPH:</strong> ${eyeData.sph} / <strong>CYL:</strong> ${eyeData.cyl}</p>
+                 <p class="mt-2"><strong>基弧 (BC):</strong> ${eyeData.bc} mm</p>
+                 ${eyeData.add ? `<p class="mt-2 text-purple-700"><strong>ADD:</strong> ${eyeData.add}</p>` : ''}`;
       } else if(type === 'rgp') {
-        return `<p class="mt-2 text-3xl font-bold text-blue-700">${eyeData.power} D</p>
-                <p class="mt-2"><strong>基弧 (BC):</strong> ${eyeData.bc} mm</p>
-                <p class="mt-2"><strong>直徑 (DIA):</strong> ${eyeData.dia} mm</p>`;
+        html += `<p class="mt-2 text-3xl font-bold text-blue-700">${eyeData.power} D</p>
+                 <p class="mt-2"><strong>基弧 (BC):</strong> ${eyeData.bc} mm</p>
+                 <p class="mt-2"><strong>直徑 (DIA):</strong> ${eyeData.dia} mm</p>`;
       } else if(type === 'toric') {
-        return `<p class="mt-2"><strong>平坦軸:</strong> BC ${eyeData.bc1} mm / <span class="font-bold text-blue-700">${eyeData.p1} D</span></p>
-                <p class="mt-2"><strong>陡峭軸:</strong> BC ${eyeData.bc2} mm / <span class="font-bold text-red-700">${eyeData.p2} D</span></p>
-                <p class="mt-4 text-xl"><strong>直徑 (DIA):</strong> ${eyeData.dia} mm</p>`;
+        html += `<p class="mt-2"><strong>平坦軸:</strong> BC ${eyeData.bc1} mm / <span class="font-bold text-blue-700">${eyeData.p1} D</span></p>
+                 <p class="mt-2"><strong>陡峭軸:</strong> BC ${eyeData.bc2} mm / <span class="font-bold text-red-700">${eyeData.p2} D</span></p>
+                 <p class="mt-4 text-xl"><strong>直徑 (DIA):</strong> ${eyeData.dia} mm</p>`;
       }
+      
+      // 加入備註渲染
+      if(eyeData.notes) {
+        html += `<div class="mt-4 pt-3 border-t border-gray-300">
+                   <p class="text-lg text-gray-700"><strong>📝 備註：</strong> ${eyeData.notes}</p>
+                 </div>`;
+      }
+      
+      return html;
     }
 
     function printReport(r) {
@@ -433,13 +479,11 @@
       document.getElementById('print-date').innerText = new Date(r.created_at).toLocaleString('zh-TW');
       document.getElementById('print-type').innerText = r.type;
       
-      // 處理舊版單眼紀錄與新版 OU 合併紀錄
       let odData = null, osData = null;
       if(r.eye === 'OU' || r.parameters.OD !== undefined) {
         odData = r.parameters.OD;
         osData = r.parameters.OS;
       } else {
-        // 相容舊資料
         if(r.eye === 'OD') odData = r.parameters;
         if(r.eye === 'OS') osData = r.parameters;
       }
@@ -450,17 +494,12 @@
       window.print();
     }
 
-    // --- 共用數學工具 ---
     function round025(val) { return Math.round(val * 4) / 4; }
     function calcVertex(power, vd_mm) {
       if (!power) return 0;
       return power / (1 - (vd_mm / 1000) * power);
     }
     function formatD(val) { return val > 0 ? `+${val.toFixed(2)}` : val.toFixed(2); }
-
-    // ==========================================
-    // 驗配計算機邏輯 (全將結果存入 sessionData)
-    // ==========================================
 
     // --- View 2: SCL ---
     function calcSCL() {
@@ -469,6 +508,7 @@
       const vd = parseFloat(document.getElementById('scl-vd').value) || 12;
       const flatK = parseFloat(document.getElementById('scl-k').value) || 0;
       const add = document.getElementById('scl-add').value || '';
+      const notes = document.getElementById('scl-notes').value || '';
 
       const cl_sph_raw = calcVertex(sph, vd);
       const cl_total_raw = calcVertex(sph + cyl, vd);
@@ -486,16 +526,15 @@
       document.getElementById('res-scl-se').innerText = strSe;
       document.getElementById('res-scl-bc').innerText = bc;
       document.getElementById('res-scl-add').innerText = add || '無';
+      document.getElementById('res-scl-notes').innerText = notes || '無';
       
       const resContainer = document.getElementById('scl-result');
       resContainer.classList.remove('hidden');
       
-      // 依眼別更改結果框邊框顏色
       const eye = getSelectedEye();
       resContainer.className = `mt-6 bg-white p-5 rounded-lg border-2 border-dashed ${eye === 'OD' ? 'border-emerald-500' : 'border-sky-500'}`;
 
-      // 寫入暫存
-      sessionData.scl[eye] = { sph: strSph, cyl: scl_cyl_rounded, se: strSe, bc, add };
+      sessionData.scl[eye] = { sph: strSph, cyl: scl_cyl_rounded, se: strSe, bc, add, notes };
     }
 
     // --- View 3: RGP Spherical ---
@@ -525,19 +564,21 @@
       const trialPower = parseFloat(document.getElementById('rgp-trial-power').value) || 0;
       const actualBc = document.getElementById('rgp-actual-bc').value;
       const finalDia = document.getElementById('rgp-final-dia').value;
+      const notes = document.getElementById('rgp-notes').value || '';
 
       const finalPower = formatD(trialPower + round025(calcVertex(orSph, vd)));
 
       document.getElementById('res-rgp-power').innerText = finalPower;
       document.getElementById('res-rgp-bc').innerText = actualBc;
       document.getElementById('res-rgp-dia').innerText = finalDia;
+      document.getElementById('res-rgp-notes').innerText = notes || '無';
       
       const resContainer = document.getElementById('rgp-result');
       resContainer.classList.remove('hidden');
       const eye = getSelectedEye();
       resContainer.className = `mt-4 bg-white p-5 rounded-lg border-2 border-dashed ${eye === 'OD' ? 'border-emerald-500 text-emerald-900' : 'border-sky-500 text-sky-900'}`;
 
-      sessionData.rgp[eye] = { power: finalPower, bc: actualBc, dia: finalDia };
+      sessionData.rgp[eye] = { power: finalPower, bc: actualBc, dia: finalDia, notes };
     }
 
     // --- View 4: RGP Toric ---
@@ -558,6 +599,7 @@
       const k1 = parseFloat(document.getElementById('t-k1').value) || 0;
       const k2 = parseFloat(document.getElementById('t-k2').value) || 0;
       const cs = parseFloat(document.getElementById('t-cs').value) || 0;
+      const notes = document.getElementById('toric-notes').value || '';
 
       const vertex_1 = round025(calcVertex(sph, vd));
       const vertex_2 = round025(calcVertex(sph + cyl, vd));
@@ -574,13 +616,14 @@
       document.getElementById('res-t-bc2').innerText = bc2_mm;
       document.getElementById('res-t-p2').innerText = p2;
       document.getElementById('res-t-dia').innerText = finalDia;
+      document.getElementById('res-t-notes').innerText = notes || '無';
       
       const resContainer = document.getElementById('toric-result');
       resContainer.classList.remove('hidden');
       const eye = getSelectedEye();
       resContainer.className = `mt-4 bg-white p-6 rounded-lg border-2 border-dashed ${eye === 'OD' ? 'border-emerald-500' : 'border-sky-500'}`;
 
-      sessionData.toric[eye] = { bc1: bc1_mm, p1, bc2: bc2_mm, p2, dia: finalDia };
+      sessionData.toric[eye] = { bc1: bc1_mm, p1, bc2: bc2_mm, p2, dia: finalDia, notes };
     }
   </script>
 </body>
