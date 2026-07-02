@@ -17,8 +17,7 @@
     #view-scl.bg-morandi-od, #view-rgp.bg-morandi-od, #view-toric.bg-morandi-od { background-color: #f1f3f0 !important; border-color: #cbd5e1; } /* 鼠尾草灰綠 */
     #view-scl.bg-morandi-os, #view-rgp.bg-morandi-os, #view-toric.bg-morandi-os { background-color: #ecf0f3 !important; border-color: #cbd5e1; } /* 霧霾藍灰 */
     
-    /* 網頁內置預覽彈窗樣式 */
-    #print-modal-backdrop { background-color: rgba(0,0,0,0.4); }
+    #print-modal-backdrop, #optometrist-modal-backdrop { background-color: rgba(0,0,0,0.4); }
 
     @media print {
       body { background: white !important; color: black !important; }
@@ -31,21 +30,34 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans flex h-screen overflow-hidden">
 
+  <!-- 左側選單 -->
   <div class="w-64 bg-morandi-dark text-white flex flex-col no-print shadow-xl z-10">
     <div class="p-6 bg-slate-gray font-bold text-lg tracking-wide shadow-inner">驗配控制中心 PRO</div>
     <nav class="flex-1 px-4 py-6 space-y-2">
       <button onclick="switchView('crm')" id="nav-crm" class="w-full text-left px-4 py-3 rounded bg-slate-gray text-white font-medium transition-colors">客戶管理 (CRM)</button>
-      <button onclick="switchView('scl')" id="nav-scl" class="w-full text-left px-4 py-3 rounded hover:bg-slate-700 text-slate-300 font-medium transition-colors">軟式換算 (SCL)</button>
-      <button onclick="switchView('rgp')" id="nav-rgp" class="w-full text-left px-4 py-3 rounded hover:bg-slate-700 text-slate-300 font-medium transition-colors">球面硬式 (RGP)</button>
-      <button onclick="switchView('toric')" id="nav-toric" class="w-full text-left px-4 py-3 rounded hover:bg-slate-700 text-slate-300 font-medium transition-colors">散光硬式 (Toric)</button>
+      <button onclick="switchView('scl')" id="nav-scl" class="w-full text-left px-4 py-3 rounded hover:bg-slate-700 text-gray-300 font-medium transition-colors">軟式換算 (SCL)</button>
+      <button onclick="switchView('rgp')" id="nav-rgp" class="w-full text-left px-4 py-3 rounded hover:bg-slate-700 text-gray-300 font-medium transition-colors">球面硬式 (RGP)</button>
+      <button onclick="switchView('toric')" id="nav-toric" class="w-full text-left px-4 py-3 rounded hover:bg-slate-700 text-gray-300 font-medium transition-colors">散光硬式 (Toric)</button>
     </nav>
+    
+    <!-- 驗光人員維護區塊 -->
+    <div class="p-4 border-t border-slate-700 text-xs">
+      <div class="flex justify-between items-center text-slate-400 mb-2">
+        <span>當前驗光師:</span>
+        <button onclick="openOptometristModal()" class="text-slate-300 hover:text-white underline">⚙️ 設定</button>
+      </div>
+      <div id="sidebar-optometrist-display" class="font-bold text-slate-200">未指定驗光人員</div>
+    </div>
+
     <div class="p-4 border-t border-slate-700 text-xs text-slate-400">
       當前選定客戶:<br><span id="active-customer-name" class="font-bold text-slate-200 text-base tracking-wider block mt-1">未選擇</span>
     </div>
   </div>
 
+  <!-- 主工作區 -->
   <div class="flex-1 overflow-y-auto p-8 relative">
     
+    <!-- 眼別選擇器與手機平板拍照上傳 -->
     <div id="eye-selector" class="hidden mb-6 bg-white p-4 rounded-xl shadow-sm border flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
       <div class="flex items-center gap-6">
         <span class="font-bold text-slate-500 text-sm">當前輸入眼別：</span>
@@ -56,6 +68,8 @@
           <input type="radio" name="eye" value="OS" class="w-4 h-4 accent-slate-500"> 左眼 (OS)
         </label>
       </div>
+      
+      <!-- 照片拍照上傳區 (支援手機平板即拍即傳) -->
       <div class="flex items-center gap-3 border-l pl-0 md:pl-6 border-slate-200">
         <span class="text-xs font-bold text-slate-500">鏡片/螢光圖紀錄 (選填)：</span>
         <input type="file" id="eye-photo-input" accept="image/*" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer" onchange="handlePhotoUpload()">
@@ -66,6 +80,7 @@
       </div>
     </div>
 
+    <!-- 1. CRM 區塊 -->
     <div id="view-crm" class="view-content active max-w-5xl mx-auto">
       <h2 class="text-xl font-bold mb-6 text-slate-800 tracking-wide">客戶資料與歷史病歷</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -99,6 +114,7 @@
       </div>
     </div>
 
+    <!-- 2. SCL 區塊 -->
     <div id="view-scl" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border transition-colors duration-300">
       <div class="flex justify-between items-center mb-6 border-b border-slate-300 pb-3">
         <h2 class="text-lg font-bold text-slate-800">軟式隱形眼鏡 (SCL) 換算</h2>
@@ -114,7 +130,7 @@
       </div>
       <div class="mb-6 text-sm">
         <label class="block font-bold text-slate-600 mb-1">備註 (Notes)</label>
-        <input type="text" id="scl-notes" placeholder="紀錄試戴狀況、鏡片廠牌或其他備註..." class="w-full border p-2.5 rounded-lg shadow-inner outline-none">
+        <input type="text" id="scl-notes" placeholder="紀錄試戴狀況或其他備註..." class="w-full border p-2.5 rounded-lg shadow-inner outline-none">
       </div>
       <button onclick="calcSCL()" class="bg-slate-700 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-slate-800 shadow">計算當前眼別</button>
       
@@ -127,6 +143,7 @@
       </div>
     </div>
 
+    <!-- 3. RGP 區塊 -->
     <div id="view-rgp" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border transition-colors duration-300">
       <div class="flex justify-between items-center mb-6 border-b border-slate-300 pb-3">
         <h2 class="text-lg font-bold text-slate-800">RGP 球面硬式試片驗配</h2>
@@ -162,7 +179,7 @@
         </div>
         <div>
           <label class="block font-bold text-slate-600 mb-1">備註 (Notes)</label>
-          <input type="text" id="rgp-notes" placeholder="紀錄螢光圖狀況狀況..." class="border p-2.5 rounded-lg w-full outline-none shadow-inner">
+          <input type="text" id="rgp-notes" placeholder="紀錄螢光圖狀況..." class="border p-2.5 rounded-lg w-full outline-none shadow-inner">
         </div>
         <button onclick="calcRGP()" class="bg-slate-700 text-white px-6 py-2.5 rounded-lg font-bold w-full hover:bg-slate-800 shadow">計算當前眼別處方</button>
         
@@ -175,6 +192,7 @@
       </div>
     </div>
 
+    <!-- 4. Toric 區塊 -->
     <div id="view-toric" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border transition-colors duration-300">
       <div class="flex justify-between items-center mb-6 border-b border-slate-300 pb-3">
         <h2 class="text-lg font-bold text-slate-800">想配Toric RGP? 聽我勸 照步驟吧!</h2>
@@ -197,7 +215,7 @@
         </div>
         <div>
           <label class="block font-bold text-slate-600 mb-1">備註 (Notes)</label>
-          <input type="text" id="toric-notes" placeholder="紀錄鏡片旋轉、螢光圖狀況狀況..." class="border p-2.5 rounded-lg w-full outline-none shadow-inner">
+          <input type="text" id="toric-notes" placeholder="紀錄鏡片旋轉狀況狀況..." class="border p-2.5 rounded-lg w-full outline-none shadow-inner">
         </div>
         <div class="bg-slate-800 p-4 rounded-xl shadow-md text-center">
           <p class="font-bold mb-2 text-white text-xs">3. 再來沒你的事了下面自動處理</p>
@@ -226,14 +244,35 @@
 
   </div>
 
+  <!-- 驗光人員管理維護彈窗 -->
+  <div id="optometrist-modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center hidden p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl border p-6">
+      <h3 class="font-bold text-slate-800 text-base mb-4 border-b pb-2">⚙️ 維護驗光人員資訊</h3>
+      <div class="space-y-3 mb-6">
+        <div>
+          <label class="block text-xs font-bold text-slate-500 mb-1">驗光人員姓名</label>
+          <input type="text" id="op-modal-name" placeholder="請輸入姓名" class="w-full border p-2 rounded-lg text-sm bg-slate-50 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-500 mb-1">驗光師/生證號 (選填)</label>
+          <input type="text" id="op-modal-license" placeholder="例如: 驗光師字第000000號" class="w-full border p-2 rounded-lg text-sm bg-slate-50 outline-none">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 text-xs font-bold">
+        <button onclick="closeOptometristModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">取消</button>
+        <button onclick="saveOptometristSetting()" class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700">設定儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 調閱列印前的網頁預覽彈窗 -->
   <div id="print-modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center hidden p-4 no-print">
     <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border">
       <div class="p-4 border-b flex justify-between items-center bg-slate-100 rounded-t-2xl">
         <h3 class="font-bold text-slate-700 text-sm">📄 處方報告列印前預覽</h3>
         <button onclick="closePrintModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
       </div>
-      <div class="flex-1 overflow-y-auto p-6" id="modal-preview-body">
-        </div>
+      <div class="flex-1 overflow-y-auto p-6" id="modal-preview-body"></div>
       <div class="p-4 border-t bg-slate-50 flex justify-end gap-3 rounded-b-2xl">
         <button onclick="closePrintModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-300">取消</button>
         <button onclick="triggerSystemPrint()" class="px-5 py-2 bg-slate-600 text-white rounded-lg text-xs font-bold hover:bg-slate-700 shadow-sm">🖨️ 確認輸出 PDF / 列印</button>
@@ -241,34 +280,37 @@
     </div>
   </div>
 
+  <!-- 真實列印專用 DOM 區塊 -->
   <div id="print-area-wrapper" style="display: none;">
-    <div style="text-align: center; margin-bottom: 10px; border-b: 2px solid #334155; padding-bottom: 4px;">
+    <div style="text-align: center; margin-bottom: 8px; border-b: 2px solid #334155; padding-bottom: 4px;">
       <h1 style="font-size: 18px; font-weight: bold; margin: 0; color: #1e293b;">隱形眼鏡驗配處方報告</h1>
     </div>
     <div style="display: flex; justify-content: space-between; font-size: 11px; background: #f8fafc; padding: 6px; border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 12px;">
       <div>
-        <p style="margin: 2px 0;"><b>客戶姓名：</b> <span id="print-name" style="font-size: 12px; font-weight: bold; color:#0f172a;"></span></p>
+        <p style="margin: 2px 0;"><b>客戶姓名：</b> <span id="print-name" style="font-size: 11px; font-weight: bold; color:#0f172a;"></span></p>
         <p style="margin: 2px 0;"><b>聯絡電話：</b> <span id="print-phone"></span></p>
       </div>
       <div style="text-align: right;">
-        <p style="margin: 2px 0;"><b>報告時間：</b> <span id="print-date"></span></p>
-        <p style="margin: 2px 0;"><b>鏡片類型：</b> <span id="print-type" style="font-weight: bold; color: #475569;"></span></p>
+        <p style="margin: 2px 0;"><b>驗配人員：</b> <span id="print-optometrist" style="font-weight: bold;"></span></p>
+        <p style="margin: 2px 0;"><b>報告時間：</b> <span id="print-date"></span> | <b>類型：</b> <span id="print-type" style="font-weight: bold;"></span></p>
       </div>
     </div>
     
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <!-- 右眼 -->
       <div class="print-card">
         <h2 style="font-size: 12px; font-weight: bold; margin: 0 0 6px 0; border-bottom: 1px solid #475569; padding-bottom: 2px; color: #334155;">右眼 (OD)</h2>
         <div id="print-od-content"></div>
         <div id="print-od-image-box" style="margin-top: 8px; text-align: center; display: none;">
-          <img id="print-od-img" style="max-width: 100%; max-height: 120px; object-fit: contain; border: 1px solid #cbd5e1; border-radius: 4px;">
+          <img id="print-od-img" style="max-width: 100%; max-height: 110px; object-fit: contain; border: 1px solid #cbd5e1; border-radius: 4px;">
         </div>
       </div>
+      <!-- 左眼 -->
       <div class="print-card">
         <h2 style="font-size: 12px; font-weight: bold; margin: 0 0 6px 0; border-bottom: 1px solid #475569; padding-bottom: 2px; color: #334155;">左眼 (OS)</h2>
         <div id="print-os-content"></div>
         <div id="print-os-image-box" style="margin-top: 8px; text-align: center; display: none;">
-          <img id="print-os-img" style="max-width: 100%; max-height: 120px; object-fit: contain; border: 1px solid #cbd5e1; border-radius: 4px;">
+          <img id="print-os-img" style="max-width: 100%; max-height: 110px; object-fit: contain; border: 1px solid #cbd5e1; border-radius: 4px;">
         </div>
       </div>
     </div>
@@ -283,7 +325,9 @@
     let records = [];
     let activeCustomer = null;
     
-    // 全域 Session 結構，包含輸入值、計算結果與處理後的低載壓縮 Base64 字串
+    // 全域維護當前登入之驗光師資訊
+    let currentOptometrist = { name: '', license: '' };
+    
     let sessionData = {
       scl: { OD: { inputs: {}, res: null, photo: null }, OS: { inputs: {}, res: null, photo: null } },
       rgp: { OD: { inputs: {}, res: null, photo: null }, OS: { inputs: {}, res: null, photo: null } },
@@ -294,11 +338,41 @@
       try {
         const { data } = await supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
         if(data) { customers = data; renderCustomers(); }
+        // 初始化讀取本地快取的驗光人員
+        const cacheOp = localStorage.getItem('active_optometrist');
+        if(cacheOp) {
+          currentOptometrist = JSON.parse(cacheOp);
+          updateOptometristUI();
+        }
       } catch(e) {}
     }
     window.onload = loadCustomers;
 
-    // --- 莫蘭迪背景變色控制中心 ---
+    // 驗光師維護視窗控制
+    function openOptometristModal() {
+      document.getElementById('op-modal-name').value = currentOptometrist.name || '';
+      document.getElementById('op-modal-license').value = currentOptometrist.license || '';
+      document.getElementById('optometrist-modal-backdrop').classList.remove('hidden');
+    }
+    function closeOptometristModal() {
+      document.getElementById('optometrist-modal-backdrop').classList.add('hidden');
+    }
+    function saveOptometristSetting() {
+      const name = document.getElementById('op-modal-name').value.trim();
+      const license = document.getElementById('op-modal-license').value.trim();
+      if(!name) return alert("請至少輸入驗光人員姓名！");
+      
+      currentOptometrist = { name, license };
+      localStorage.setItem('active_optometrist', JSON.stringify(currentOptometrist));
+      updateOptometristUI();
+      closeOptometristModal();
+    }
+    function updateOptometristUI() {
+      const displayStr = currentOptometrist.license ? `${currentOptometrist.name} (${currentOptometrist.license})` : currentOptometrist.name;
+      document.getElementById('sidebar-optometrist-display').innerText = displayStr || '未指定驗光人員';
+    }
+
+    // --- 莫蘭迪背景變色核心 ---
     function updateWorkspaceColor() {
       const eye = getSelectedEye();
       const panels = ['view-scl', 'view-rgp', 'view-toric'];
@@ -313,7 +387,6 @@
       });
     }
 
-    // 格式64 高畫質效能平衡壓縮引擎 (限制800px、jpeg 0.65壓縮)
     function handlePhotoUpload() {
       const fileInput = document.getElementById('eye-photo-input');
       const file = fileInput.files[0];
@@ -326,7 +399,7 @@
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          const max_size = 800; // 高效尺寸，兼顧細節與容量
+          const max_size = 800;
 
           if (width > height && width > max_size) { height *= max_size / width; width = max_size; } 
           else if (height > max_size) { width *= max_size / height; height = max_size; }
@@ -336,9 +409,7 @@
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          // 平衡品質：jpeg 0.65 快狠準
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.65);
-          
           const eye = getSelectedEye();
           const type = getActiveTabType();
           sessionData[type][eye].photo = compressedBase64;
@@ -538,8 +609,7 @@
       if (dob) dbCustomer.dob = dob;
 
       try {
-        const { data, error } = await supabaseClient.from('customers').insert([dbCustomer]).select();
-        if (error) return alert("新增客戶失敗");
+        const { data } = await supabaseClient.from('customers').insert([dbCustomer]).select();
         if (data && data.length > 0) {
           customers.unshift(data[0]);
           document.getElementById('crm-name').value = '';
@@ -594,7 +664,6 @@
           if (r.type === 'toric' && r.parameters.OS) summaryOS = `F:${r.parameters.OS.p1}D`;
         }
         
-        // 檢查病歷內有無附帶拍照照片
         const hasPhotos = r.images && (r.images.OD || r.images.OS) ? '📷' : '';
 
         return `
@@ -618,16 +687,14 @@
       }).join('');
     }
 
-    // 解決第 2 點：提供歷史驗配紀錄刪除機制
     async function deleteRecord(recordId, customerId) {
-      if(!confirm("確定要永久刪除此筆隱形眼鏡驗配紀錄嗎？此操作不可還原。")) return;
+      if(!confirm("確定要永久刪除此筆紀錄嗎？")) return;
       try {
         const { error } = await supabaseClient.from('fitting_records').delete().eq('id', recordId);
-        if(error) return alert("刪除失敗：" + error.message);
+        if(error) return alert("刪除失敗");
         alert("✅ 紀錄已成功清除");
-        // 重新調閱列表
         viewHistory(customerId, activeCustomer.name);
-      } catch(e) { alert("系統發生錯誤，刪除未完成。"); }
+      } catch(e) { alert("刪除未完成。"); }
     }
 
     async function saveCombinedRecord(type) {
@@ -640,31 +707,31 @@
       const photoOD = sessionData[type].OD.photo;
       const photoOS = sessionData[type].OS.photo;
 
-      if(!currentOD && !currentOS) return alert("❌ 兩眼皆無任何計算結果，請先完成計算。");
+      if(!currentOD && !currentOS) return alert("❌ 兩眼皆無任何計算結果。");
 
+      // 將當前登入的驗光人員一併存檔
       const record = { 
         customer_id: activeCustomer.id, 
         eye: "OU", 
         type: type, 
         parameters: { OD: currentOD, OS: currentOS },
-        images: { OD: photoOD, OS: photoOS } // 雙眼Base64一併打包儲存
+        images: { OD: photoOD, OS: photoOS },
+        optometrist_name: currentOptometrist.name || null,
+        optometrist_license: currentOptometrist.license || null
       };
 
       try { 
-        const { data, error } = await supabaseClient.from('fitting_records').insert([record]).select();
+        const { error } = await supabaseClient.from('fitting_records').insert([record]);
         if (error) return alert("儲存病歷失敗");
         alert(`✅ 已儲存紀錄！`);
-        // 清除當次照片
         sessionData[type].OD.photo = null;
         sessionData[type].OS.photo = null;
         document.getElementById('eye-photo-input').value = '';
         displayCurrentPhotoPreview(null);
-        
         viewHistory(activeCustomer.id, activeCustomer.name);
-      } catch(e) { alert("儲存失敗。"); }
+      } catch(e) {}
     }
 
-    // 解決第 3 點與第 4 點：點擊後彈出精緻網頁 Modal 預覽，不為空，且同時渲染2張照片與病歷
     function openPrintPreviewModal(r) {
       const customer = customers.find(c => c.id === r.customer_id);
       const name = customer ? customer.name : '未知';
@@ -672,11 +739,17 @@
       const dateStr = new Date(r.created_at).toLocaleDateString('zh-TW');
       const typeStr = r.type.toUpperCase();
 
-      // 先將資料塞入真實列印 DOM
+      // 驗光人員摘要整合
+      let opDisplay = '未指定';
+      if(r.optometrist_name) {
+        opDisplay = r.optometrist_license ? `${r.optometrist_name} (${r.optometrist_license})` : r.optometrist_name;
+      }
+
       document.getElementById('print-name').innerText = name;
       document.getElementById('print-phone').innerText = phone;
       document.getElementById('print-date').innerText = dateStr;
       document.getElementById('print-type').innerText = typeStr;
+      document.getElementById('print-optometrist').innerText = opDisplay;
 
       let odData = r.parameters ? r.parameters.OD : null;
       let osData = r.parameters ? r.parameters.OS : null;
@@ -684,7 +757,6 @@
       document.getElementById('print-od-content').innerHTML = generateEyeHtml(odData, r.type);
       document.getElementById('print-os-content').innerHTML = generateEyeHtml(osData, r.type);
 
-      // 照片數據掛載
       const pOD = r.images ? r.images.OD : null;
       const pOS = r.images ? r.images.OS : null;
 
@@ -698,12 +770,12 @@
         document.getElementById('print-os-image-box').style.display = 'block';
       } else { document.getElementById('print-os-image-box').style.display = 'none'; }
 
-      // 同步複製一份 HTML 到 Modal 彈窗裡面供使用者實時瀏覽
       const modalBody = document.getElementById('modal-preview-body');
       modalBody.innerHTML = `
         <div class="border p-4 rounded-xl bg-slate-50 text-xs text-slate-700 space-y-4">
           <div class="flex justify-between font-bold border-b pb-2 text-slate-500">
             <div>客戶：${name} (${phone})</div>
+            <div>驗光師：${opDisplay}</div>
             <div>類型：${typeStr} | 時間：${dateStr}</div>
           </div>
           <div class="grid grid-cols-2 gap-4">
@@ -720,20 +792,11 @@
           </div>
         </div>
       `;
-
-      // 顯現 Modal
       document.getElementById('print-modal-backdrop').classList.remove('hidden');
     }
 
-    function closePrintModal() {
-      document.getElementById('print-modal-backdrop').classList.add('hidden');
-    }
-
-    function triggerSystemPrint() {
-      closePrintModal();
-      // 切換完畢後直接印
-      setTimeout(() => { window.print(); }, 150);
-    }
+    function closePrintModal() { document.getElementById('print-modal-backdrop').classList.add('hidden'); }
+    function triggerSystemPrint() { closePrintModal(); setTimeout(() => { window.print(); }, 150); }
 
     function generateEyeHtml(eyeData, type) {
       if(!eyeData) return `<p style="color:#aaa; font-style:italic; font-size:11px; margin:0;">無資料</p>`;
