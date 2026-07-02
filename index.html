@@ -10,13 +10,12 @@
     .view-content { display: none; }
     .view-content.active { display: block; }
     
-    /* 莫蘭迪高級女力色系 (經優化：飽和度提升15%，色彩更沉穩扎實，絕非奶色) */
-    .bg-slate-gray { background-color: #4a5d6e; } /* 飽和霧灰藍 */
-    .bg-morandi-dark { background-color: #1f272e; } /* 扎實炭黑 */
+    /* 莫蘭迪高級女力色系 */
+    .bg-slate-gray { background-color: #4a5d6e; }
+    .bg-morandi-dark { background-color: #1f272e; }
     
-    /* 工作面板底色：飽和度提升15% 的莫蘭迪視覺 */
-    #view-scl.bg-morandi-od, #view-rgp.bg-morandi-od, #view-toric.bg-morandi-od { background-color: #e2e7df !important; border-color: #94a3b8; } /* 飽和鼠尾草灰綠 */
-    #view-scl.bg-morandi-os, #view-rgp.bg-morandi-os, #view-toric.bg-morandi-os { background-color: #dae1e7 !important; border-color: #94a3b8; } /* 飽和霧霾藍灰 */
+    #view-scl.bg-morandi-od, #view-rgp.bg-morandi-od, #view-toric.bg-morandi-od { background-color: #e2e7df !important; border-color: #94a3b8; }
+    #view-scl.bg-morandi-os, #view-rgp.bg-morandi-os, #view-toric.bg-morandi-os { background-color: #dae1e7 !important; border-color: #94a3b8; }
     
     #print-modal-backdrop, #optometrist-modal-backdrop { background-color: rgba(0,0,0,0.4); }
 
@@ -31,6 +30,7 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans flex h-screen overflow-hidden">
 
+  <!-- 左側選單 -->
   <div class="w-64 bg-morandi-dark text-white flex flex-col no-print shadow-xl z-10">
     <div class="p-6 bg-slate-gray font-bold text-lg tracking-wide shadow-inner">驗配控制中心 PRO</div>
     <nav class="flex-1 px-4 py-6 space-y-2">
@@ -40,12 +40,13 @@
       <button onclick="switchView('toric')" id="nav-toric" class="w-full text-left px-4 py-3 rounded hover:bg-slate-700 text-gray-300 font-medium transition-colors">散光硬式 (Toric)</button>
     </nav>
     
+    <!-- 雲端同步驗光人員維護區塊 -->
     <div class="mx-4 mb-2 p-3 rounded-xl bg-slate-900 border border-slate-700 cursor-pointer hover:bg-slate-800 transition-all text-xs" onclick="openOptometristModal()">
       <div class="flex justify-between items-center text-slate-400 mb-1">
         <span>當前驗光人員</span>
         <span class="text-[10px] bg-slate-700 px-1.5 py-0.5 rounded text-slate-200">⚙️ 管理</span>
       </div>
-      <div id="sidebar-optometrist-display" class="font-bold text-slate-200 break-all">未指定驗光人員</div>
+      <div id="sidebar-optometrist-display" class="font-bold text-slate-200 break-all">同步中...</div>
     </div>
 
     <div class="p-4 border-t border-slate-700 text-xs text-slate-400">
@@ -53,8 +54,10 @@
     </div>
   </div>
 
+  <!-- 主工作區 -->
   <div class="flex-1 overflow-y-auto p-8 relative">
     
+    <!-- 眼別選擇器 -->
     <div id="eye-selector" class="hidden mb-6 bg-white p-4 rounded-xl shadow-sm border flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
       <div class="flex items-center gap-6">
         <span class="font-bold text-slate-500 text-sm">當前輸入眼別：</span>
@@ -65,7 +68,6 @@
           <input type="radio" name="eye" value="OS" class="w-4 h-4 accent-slate-500"> 左眼 (OS)
         </label>
       </div>
-      
       <div class="flex items-center gap-3 border-l pl-0 md:pl-6 border-slate-200">
         <span class="text-xs font-bold text-slate-500">鏡片/螢光圖紀錄 (選填)：</span>
         <input type="file" id="eye-photo-input" accept="image/*" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer" onchange="handlePhotoUpload()">
@@ -76,6 +78,7 @@
       </div>
     </div>
 
+    <!-- 1. CRM -->
     <div id="view-crm" class="view-content active max-w-5xl mx-auto">
       <h2 class="text-xl font-bold mb-6 text-slate-800 tracking-wide">客戶資料與歷史病歷</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -100,7 +103,6 @@
               <tbody id="customer-list"></tbody>
             </table>
           </div>
-          
           <div id="history-section" class="mt-8 hidden border-t border-slate-200 pt-6">
             <h3 class="font-bold text-base mb-4 text-slate-800">驗配歷史病歷: <span id="history-name" class="text-slate-600 underline"></span></h3>
             <div id="history-records" class="space-y-3 max-h-80 overflow-y-auto pr-1"></div>
@@ -109,6 +111,7 @@
       </div>
     </div>
 
+    <!-- 2. SCL -->
     <div id="view-scl" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border transition-colors duration-300">
       <div class="flex justify-between items-center mb-6 border-b border-slate-400 pb-3">
         <h2 class="text-lg font-bold text-slate-800">軟式隱形眼鏡 (SCL) 換算</h2>
@@ -124,7 +127,7 @@
       </div>
       <div class="mb-6 text-sm">
         <label class="block font-bold text-slate-600 mb-1">備註 (Notes)</label>
-        <input type="text" id="scl-notes" placeholder="紀錄試戴狀況、鏡片廠牌或其他備註..." class="w-full border p-2.5 rounded-lg shadow-inner outline-none">
+        <input type="text" id="scl-notes" placeholder="紀錄試戴狀況..." class="w-full border p-2.5 rounded-lg shadow-inner outline-none">
       </div>
       <button onclick="calcSCL()" class="bg-slate-700 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-slate-800 shadow">計算當前眼別</button>
       
@@ -136,10 +139,10 @@
           <p class="text-xl">建議基弧 (B.C.): <span id="res-scl-bc" class="font-black text-3xl text-purple-800"></span> mm</p>
           <p class="text-lg text-slate-700">老花加入度 (ADD): <span id="res-scl-add" class="text-2xl font-black"></span></p>
         </div>
-        <p class="text-xs text-slate-500 mt-4 border-t border-slate-200 pt-2 font-medium">備註: <span id="res-scl-notes" class="font-bold text-slate-800"></span></p>
       </div>
     </div>
 
+    <!-- 3. RGP -->
     <div id="view-rgp" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border transition-colors duration-300">
       <div class="flex justify-between items-center mb-6 border-b border-slate-400 pb-3">
         <h2 class="text-lg font-bold text-slate-800">RGP 球面硬式試片驗配</h2>
@@ -151,18 +154,12 @@
           <div><label class="block font-bold text-slate-600 mb-1">R2 (陡K)</label><input type="number" id="rgp-r2" step="0.01" class="w-full border p-2 rounded-lg outline-none" onchange="calcRgpStep1()"></div>
           <div><label class="block font-bold text-slate-600 mb-1">CS (角膜直徑)</label><input type="number" id="rgp-cs" step="0.1" class="w-full border p-2 rounded-lg outline-none" onchange="calcRgpStep1()"></div>
         </div>
-        
-        <div class="bg-white p-4 rounded-xl border-2 border-slate-700 font-bold text-slate-900 text-base shadow-sm tracking-wide" id="rgp-step1-hint">
-          💡 請輸入 R1, R2 與 CS
-        </div>
-        
+        <div class="bg-white p-4 rounded-xl border-2 border-slate-700 font-bold text-slate-900 text-base shadow-sm tracking-wide" id="rgp-step1-hint">💡 請輸入 R1, R2 與 CS</div>
         <div class="flex items-center gap-4">
           <label class="font-bold text-slate-600 w-1/2">所以現在有得戴的接近 DIA 是？</label>
           <input type="number" id="rgp-trial-dia" step="0.1" class="border p-2 rounded-lg w-1/2 outline-none shadow-inner" onchange="calcRgpStep3()">
         </div>
-        
         <div class="text-slate-900 font-bold text-base bg-white p-4 rounded-xl border-2 border-slate-700 shadow-sm" id="rgp-step3-hint"></div>
-        
         <div class="flex items-center gap-4">
           <label class="font-bold text-slate-600 w-1/2">輸入你現在實際戴上的試片 BC？</label>
           <input type="number" id="rgp-actual-bc" step="0.01" class="border p-2 rounded-lg w-1/2 outline-none shadow-inner">
@@ -192,11 +189,11 @@
             <p class="text-xl">最終基弧 (BC): <span id="res-rgp-bc" class="font-black text-3xl text-emerald-800"></span> mm</p>
             <p class="text-xl">最終直徑 (DIA): <span id="res-rgp-dia" class="font-black text-3xl text-purple-800"></span> mm</p>
           </div>
-          <p class="text-xs text-slate-500 mt-4 border-t border-slate-200 pt-2 font-medium">備註: <span id="res-rgp-notes" class="font-bold text-slate-800"></span></p>
         </div>
       </div>
     </div>
 
+    <!-- 4. Toric -->
     <div id="view-toric" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border transition-colors duration-300">
       <div class="flex justify-between items-center mb-6 border-b border-slate-400 pb-3">
         <h2 class="text-lg font-bold text-slate-800">想配Toric RGP? 聽我勸 照步驟吧!</h2>
@@ -214,14 +211,12 @@
             <input type="number" id="t-cs" step="0.1" placeholder="CS (角膜直徑)" class="border border-slate-300 bg-white p-2 rounded-lg outline-none" onchange="calcToricStep2()">
           </div>
         </div>
-        
         <div class="bg-white p-4 rounded-xl border-2 border-slate-700 text-base text-slate-900 font-bold shadow-sm tracking-wide" id="toric-step2-hint">
           💡 2. 拿出試片：建議 DIA [待計算] mm, BC 大約 [待計算] mm
         </div>
-        
         <div>
           <label class="block font-bold text-slate-600 mb-1">備註 (Notes)</label>
-          <input type="text" id="toric-notes" placeholder="紀錄鏡片旋轉狀況..." class="border p-2.5 rounded-lg w-full outline-none shadow-inner">
+          <input type="text" id="toric-notes" placeholder="紀錄鏡片狀況..." class="border p-2.5 rounded-lg w-full outline-none shadow-inner">
         </div>
         <div class="bg-slate-800 p-4 rounded-xl shadow-md text-center">
           <p class="font-bold mb-2 text-white text-xs">3. 再來沒你的事了下面自動處理</p>
@@ -243,34 +238,34 @@
             </div>
           </div>
           <p class="mt-4 font-black text-center bg-slate-100 py-2.5 rounded-xl text-xl text-slate-900 border">最終直徑 (DIA): <span id="res-t-dia" class="text-2xl text-purple-900"></span> mm</p>
-          <p class="text-xs text-slate-500 mt-3 border-t border-slate-200 pt-2 text-center font-medium">備註: <span id="res-t-notes" class="font-bold text-slate-800"></span></p>
         </div>
       </div>
     </div>
 
   </div>
 
+  <!-- 雲端驗光人員管理彈窗 -->
   <div id="optometrist-modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center hidden p-4 no-print">
     <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl border p-6">
-      <h3 class="font-bold text-slate-800 text-base mb-4 border-b pb-2">⚙️ 管理驗光人員名冊</h3>
+      <h3 class="font-bold text-slate-800 text-base mb-4 border-b pb-2">⚙️ 管理雲端驗光人員名冊</h3>
       <div class="space-y-4 mb-6">
         <div>
-          <label class="block text-xs font-bold text-slate-500 mb-1">依班表選擇當前驗光師</label>
-          <select id="op-modal-select" class="w-full border p-2.5 rounded-lg text-sm bg-slate-50 outline-none font-medium text-slate-700" onchange="handleOpDropdownChange()">
-            <option value="">-- 請選擇或在下方新增 --</option>
+          <label class="block text-xs font-bold text-slate-500 mb-1">依班表選擇當前驗光師（跨設備同步）</label>
+          <select id="op-modal-select" class="w-full border p-2.5 rounded-lg text-sm bg-slate-50 outline-none font-medium text-slate-700">
+            <option value="">載入中...</option>
           </select>
         </div>
         <div class="border-t border-dashed border-slate-200 pt-3">
-          <span class="text-xs font-bold text-slate-400 block mb-2">➕ 新增人員至名冊</span>
+          <span class="text-xs font-bold text-slate-400 block mb-2">➕ 新增人員至雲端名冊 (需密碼)</span>
           <div class="space-y-2">
             <input type="text" id="op-modal-name" placeholder="驗光人員姓名" class="w-full border p-2 rounded-lg text-sm bg-slate-50 outline-none">
             <input type="text" id="op-modal-license" placeholder="證號 (選填) 例如: 師字第000000號" class="w-full border p-2 rounded-lg text-sm bg-slate-50 outline-none">
-            <button onclick="addNewOptometristToList()" class="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border text-xs font-bold rounded-lg transition-colors">將此人員加入選單</button>
+            <button onclick="addNewOptometristToCloud()" class="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border text-xs font-bold rounded-lg transition-colors">加密上傳此人員</button>
           </div>
         </div>
       </div>
       <div class="flex justify-between items-center text-xs font-bold border-t pt-3">
-        <button onclick="deleteSelectedOptometrist()" class="text-red-500 hover:text-red-700">❌ 刪除所選人員</button>
+        <button onclick="deleteCloudOptometrist()" class="text-red-500 hover:text-red-700">❌ 刪除所選人員</button>
         <div class="flex gap-2">
           <button onclick="closeOptometristModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">關閉</button>
           <button onclick="saveOptometristSelection()" class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700">確認指派執勤</button>
@@ -279,6 +274,7 @@
     </div>
   </div>
 
+  <!-- 處方報告列印前預覽彈窗 (含免責警語與簽章區預覽) -->
   <div id="print-modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center hidden p-4 no-print">
     <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border">
       <div class="p-4 border-b flex justify-between items-center bg-slate-100 rounded-t-2xl">
@@ -293,6 +289,7 @@
     </div>
   </div>
 
+  <!-- 真實列印專用 DOM 區塊 (加入嚴謹免責警語與專業簽章圓框) -->
   <div id="print-area-wrapper" style="display: none;">
     <div style="text-align: center; margin-bottom: 8px; border-b: 2px solid #334155; padding-bottom: 4px;">
       <h1 style="font-size: 18px; font-weight: bold; margin: 0; color: #1e293b;">隱形眼鏡驗配處方報告</h1>
@@ -307,7 +304,8 @@
         <p style="margin: 2px 0;"><b>報告時間：</b> <span id="print-date"></span> | <b>類型：</b> <span id="print-type" style="font-weight: bold;"></span></p>
       </div>
     </div>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
       <div class="print-card">
         <h2 style="font-size: 12px; font-weight: bold; margin: 0 0 6px 0; border-bottom: 1px solid #475569; padding-bottom: 2px; color: #334155;">右眼 (OD)</h2>
         <div id="print-od-content"></div>
@@ -323,6 +321,21 @@
         </div>
       </div>
     </div>
+
+    <!-- 警語與簽章落款區 -->
+    <div style="margin-top: 20px; border-top: 1px solid #94a3b8; padding-top: 10px; display: flex; justify-content: space-between; align-items: flex-start;">
+      <div style="font-size: 9px; color: #475569; max-width: 70%; line-height: 1.5; font-style: italic;">
+        ⚠️ <b>臨床法律免責聲明公告：</b><br>
+        本處方單數據僅供本體系之內部學術研討、試戴評估與特約合作商號進行鏡片訂製加工參考使用，非屬醫療法與驗光人員法所定義之正式驗光所醫療診斷處方。本所不對任何於非特約或未授權場所進行之鏡片配製、不當使用或衍生之臨床責任承擔任何形式之第三方擔保責任。鏡片配戴後請定期接受眼科醫師追蹤檢查。
+      </div>
+      <div style="text-align: center; font-size: 10px; min-width: 120px; margin-right: 15px;">
+        <p style="margin: 0 0 4px 0; font-weight: bold; color: #334155;">驗光人員簽章處</p>
+        <!-- 蓋章虛線圓圈框 -->
+        <div style="width: 55px; height: 55px; border: 1px dashed #64748b; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; color: #cbd5e1; font-size: 8px;">
+          (請蓋章)
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -334,6 +347,7 @@
     let records = [];
     let activeCustomer = null;
     
+    // 雲端同步名冊與當前執勤人員
     let optometristList = []; 
     let currentOptometrist = { name: '', license: '' };
     
@@ -343,17 +357,34 @@
       toric: { OD: { inputs: {}, res: null, photo: null }, OS: { inputs: {}, res: null, photo: null } }
     };
 
+    // 擴充初始化：同時抓取客戶與雲端驗光師名冊
     async function loadCustomers() {
       try {
         const { data } = await supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
         if(data) { customers = data; renderCustomers(); }
-        const cachedList = localStorage.getItem('optometrist_list');
-        if(cachedList) optometristList = JSON.parse(cachedList);
+        
+        // 抓取雲端驗光師名冊
+        await fetchCloudOptometrists();
+        
+        // 從本機讀取上次在這個設備指派誰執勤
         const cacheOp = localStorage.getItem('active_optometrist');
         if(cacheOp) { currentOptometrist = JSON.parse(cacheOp); updateOptometristUI(); }
       } catch(e) {}
     }
     window.onload = loadCustomers;
+
+    // 從 Supabase 抓取最新名冊
+    async function fetchCloudOptometrists() {
+      try {
+        const { data, error } = await supabaseClient.from('optometrists').select('*').order('created_at', { ascending: true });
+        if(!error && data) {
+          optometristList = data;
+          updateOptometristUI();
+        }
+      } catch(e) {
+        document.getElementById('sidebar-optometrist-display').innerText = '雲端連線失敗';
+      }
+    }
 
     function openOptometristModal() {
       renderOptometristDropdown();
@@ -362,6 +393,7 @@
       document.getElementById('optometrist-modal-backdrop').classList.remove('hidden');
     }
     function closeOptometristModal() { document.getElementById('optometrist-modal-backdrop').classList.add('hidden'); }
+    
     function renderOptometristDropdown() {
       const select = document.getElementById('op-modal-select');
       select.innerHTML = '<option value="">-- 請選擇或在下方新增 --</option>';
@@ -373,37 +405,60 @@
         select.appendChild(option);
       });
     }
+
     function handleOpDropdownChange() {
       document.getElementById('op-modal-name').value = '';
       document.getElementById('op-modal-license').value = '';
     }
-    function addNewOptometristToList() {
+
+    // 新增雲端人員 (需密碼保護)
+    async function addNewOptometristToCloud() {
       const name = document.getElementById('op-modal-name').value.trim();
       const license = document.getElementById('op-modal-license').value.trim();
       if(!name) return alert("請輸入驗光人員姓名！");
-      if(optometristList.some(op => op.name === name && op.license === license)) return alert("此人員已在名冊中。");
-      optometristList.push({ name, license });
-      localStorage.setItem('optometrist_list', JSON.stringify(optometristList));
-      renderOptometristDropdown();
-      document.getElementById('op-modal-select').value = optometristList.length - 1;
-      document.getElementById('op-modal-name').value = '';
-      document.getElementById('op-modal-license').value = '';
+      
+      const pwd = prompt("⚙️ 請輸入管理授權密碼以執行上傳：");
+      if(pwd !== "108114") return alert("❌ 密碼錯誤，拒絕上傳資料！");
+
+      try {
+        const { data, error } = await supabaseClient.from('optometrists').insert([{ name, license }]).select();
+        if(error) return alert("上傳失敗：" + error.message);
+        
+        alert("✅ 人員已同步至雲端資料庫！");
+        await fetchCloudOptometrists();
+        renderOptometristDropdown();
+        document.getElementById('op-modal-select').value = optometristList.findIndex(op => op.name === name && op.license === license);
+        document.getElementById('op-modal-name').value = '';
+        document.getElementById('op-modal-license').value = '';
+      } catch(e) { alert("系統出錯。"); }
     }
-    function deleteSelectedOptometrist() {
+
+    // 刪除雲端人員 (需密碼保護)
+    async function deleteCloudOptometrist() {
       const select = document.getElementById('op-modal-select');
       const index = select.value;
-      if(index === "") return alert("請先選取人員。");
-      if(!confirm("確定要刪除嗎？")) return;
-      const deletedOp = optometristList[index];
-      optometristList.splice(index, 1);
-      localStorage.setItem('optometrist_list', JSON.stringify(optometristList));
-      if(currentOptometrist.name === deletedOp.name && currentOptometrist.license === deletedOp.license) {
-        currentOptometrist = { name: '', license: '' };
-        localStorage.removeItem('active_optometrist');
-        updateOptometristUI();
-      }
-      renderOptometristDropdown();
+      if(index === "") return alert("請先選擇要刪除的人員。");
+      
+      const pwd = prompt("⚠️ 請輸入管理授權密碼以執行刪除：");
+      if(pwd !== "108114") return alert("❌ 密碼錯誤，拒絕刪除雲端資料！");
+
+      if(!confirm("確定要將此人從所有設備的名冊中永久移除嗎？")) return;
+      
+      const targetOp = optometristList[index];
+      try {
+        const { error } = await supabaseClient.from('optometrists').delete().eq('id', targetOp.id);
+        if(error) return alert("刪除失敗");
+        
+        alert("✅ 已從雲端資料庫中移除");
+        if(currentOptometrist.name === targetOp.name && currentOptometrist.license === targetOp.license) {
+          currentOptometrist = { name: '', license: '' };
+          localStorage.removeItem('active_optometrist');
+        }
+        await fetchCloudOptometrists();
+        renderOptometristDropdown();
+      } catch(e) {}
     }
+
     function saveOptometristSelection() {
       const select = document.getElementById('op-modal-select');
       const index = select.value;
@@ -411,11 +466,13 @@
       else { currentOptometrist = optometristList[index]; localStorage.setItem('active_optometrist', JSON.stringify(currentOptometrist)); }
       updateOptometristUI(); closeOptometristModal();
     }
+
     function updateOptometristUI() {
       const displayStr = currentOptometrist.license ? `${currentOptometrist.name} (${currentOptometrist.license})` : currentOptometrist.name;
       document.getElementById('sidebar-optometrist-display').innerText = displayStr || '未指定驗光人員';
     }
 
+    // --- 莫蘭迪背景變色核心 ---
     function updateWorkspaceColor() {
       const eye = getSelectedEye();
       const panels = ['view-scl', 'view-rgp', 'view-toric'];
@@ -468,8 +525,8 @@
     }
 
     document.querySelectorAll('input[name="eye"]').forEach(radio => {
-      radio.addEventListener('change', (e) => {
-        const prevEye = e.target.value === 'OD' ? 'OS' : 'OD';
+      radio.addEventListener('change', () => {
+        const prevEye = radio.value === 'OD' ? 'OS' : 'OD';
         saveCurrentInputsToSession(prevEye); updateWorkspaceColor(); restoreInputsAndResultsFromSession();
       });
     });
@@ -534,16 +591,16 @@
         if(type === 'scl') {
           document.getElementById('res-scl-sph').innerText = data.res.sph; document.getElementById('res-scl-cyl').innerText = data.res.cyl;
           document.getElementById('res-scl-se').innerText = data.res.se; document.getElementById('res-scl-bc').innerText = data.res.bc;
-          document.getElementById('res-scl-add').innerText = data.res.add || '無'; document.getElementById('res-scl-notes').innerText = data.res.notes || '無';
+          document.getElementById('res-scl-add').innerText = data.res.add || '無';
           document.getElementById('scl-result').classList.remove('hidden');
         } else if(type === 'rgp') {
           document.getElementById('res-rgp-power').innerText = data.res.power; document.getElementById('res-rgp-bc').innerText = data.res.bc;
-          document.getElementById('res-rgp-dia').innerText = data.res.dia; document.getElementById('res-rgp-notes').innerText = data.res.notes || '無';
+          document.getElementById('res-rgp-dia').innerText = data.res.dia;
           document.getElementById('rgp-result').classList.remove('hidden');
         } else if(type === 'toric') {
           document.getElementById('res-t-bc1').innerText = data.res.bc1; document.getElementById('res-t-p1').innerText = data.res.p1;
           document.getElementById('res-t-bc2').innerText = data.res.bc2; document.getElementById('res-t-p2').innerText = data.res.p2;
-          document.getElementById('res-t-dia').innerText = data.res.dia; document.getElementById('res-t-notes').innerText = data.res.notes || '無';
+          document.getElementById('res-t-dia').innerText = data.res.dia;
           document.getElementById('toric-result').classList.remove('hidden');
         }
       }
@@ -674,6 +731,7 @@
       if(pOS) { document.getElementById('print-os-img').src = pOS; document.getElementById('print-os-image-box').style.display = 'block'; } 
       else { document.getElementById('print-os-image-box').style.display = 'none'; }
 
+      // 預覽彈窗介面同步升級
       document.getElementById('modal-preview-body').innerHTML = `
         <div class="border p-4 rounded-xl bg-slate-50 text-xs text-slate-700 space-y-4">
           <div class="flex justify-between font-bold border-b pb-2 text-slate-500">
@@ -687,6 +745,16 @@
             <div class="bg-white p-3 rounded-lg border shadow-sm">
               <h4 class="font-bold text-slate-800 border-b pb-1 mb-2">左眼 (OS)</h4> ${generateEyeHtml(osData, r.type)}
               ${pOS ? `<img src="${pOS}" class="mt-2 w-full h-24 object-contain border rounded">` : '<p class="text-[10px] text-slate-400 italic mt-2">無鏡片照片</p>'}
+            </div>
+          </div>
+          <!-- 法律警語與蓋章預覽 -->
+          <div class="border-t pt-3 flex justify-between items-start text-[10px] text-slate-500 italic">
+            <div class="max-w-[70%]">
+              ⚠️ <b>臨床法律免責聲明：</b>本處方數據僅供內部研討與特約授權工廠鏡片訂製參考，非屬正式驗光所醫療診斷處方。
+            </div>
+            <div class="text-center">
+              <p class="font-bold text-slate-600 mb-1">簽章處</p>
+              <div class="w-10 h-10 border border-dashed border-slate-300 rounded-full flex items-center justify-center text-[8px] text-slate-300">(章)</div>
             </div>
           </div>
         </div>`;
@@ -730,7 +798,7 @@
 
       document.getElementById('res-scl-sph').innerText = strSph; document.getElementById('res-scl-cyl').innerText = scl_cyl_rounded.toFixed(2);
       document.getElementById('res-scl-se').innerText = strSe; document.getElementById('res-scl-bc').innerText = bc;
-      document.getElementById('res-scl-add').innerText = add || '無'; document.getElementById('res-scl-notes').innerText = notes || '無';
+      document.getElementById('res-scl-add').innerText = add || '無';
       document.getElementById('scl-result').classList.remove('hidden');
       sessionData.scl[eye].res = { sph: strSph, cyl: scl_cyl_rounded, se: strSe, bc, add, notes };
     }
@@ -749,7 +817,7 @@
       const trialDia = parseFloat(document.getElementById('rgp-trial-dia').value);
       if(rgpAvgR && rgpSuggestedDia && trialDia) {
         const adjustedBC = rgpAvgR + ((trialDia - rgpSuggestedDia) * 0.1);
-        document.getElementById('rgp-step3-hint').innerHTML = `💡 試戴片直徑改用 ${trialDia.toFixed(1)} mm 時：<br>👉 <span class="text-xl text-red-950 font-black">對應試片 BC 建議拿：${adjustedBC.toFixed(2)} mm</span> 先試看螢光染色`;
+        document.getElementById('rgp-step3-hint').innerHTML = `💡 試戴片直徑改用 ${trialDia.toFixed(1)} mm 時：<br>👉 <span class="text-xl text-red-950 font-black">對應試片 BC 建議拿：${adjustedBC.toFixed(2)} mm</span>`;
       }
     }
 
@@ -769,8 +837,8 @@
       const strBc = finalBcCalculated.toFixed(2); const strDia = finalDia.toFixed(1);
 
       document.getElementById('res-rgp-power').innerText = finalPowerRounded;
-      document.getElementById('res-rgp-bc').innerText = `${strBc} mm (內含直徑連帶補償 ${formatD(bcDiff)}mm)`;
-      document.getElementById('res-rgp-dia').innerText = strDia; document.getElementById('res-rgp-notes').innerText = notes || '無';
+      document.getElementById('res-rgp-bc').innerText = `${strBc} mm (連帶補償 ${formatD(bcDiff)}mm)`;
+      document.getElementById('res-rgp-dia').innerText = strDia; 
       document.getElementById('rgp-result').classList.remove('hidden');
       sessionData.rgp[eye].res = { power: finalPowerRounded, bc: strBc, dia: strDia, notes };
     }
@@ -780,7 +848,7 @@
       const cs = parseFloat(document.getElementById('t-cs').value) || 0;
       if(k1 && cs) {
         const trialDia = (cs - 2.0).toFixed(1); const trialBc = (337.5 / k1).toFixed(2);
-        document.getElementById('toric-step2-hint').innerHTML = `💡 拿出試片規格建議：<br>👉 <span class="text-xl text-slate-900 font-black">DIA: ${trialDia} mm</span><br>👉 <span class="text-xl text-slate-900 font-black">BC 大約: ${trialBc} mm</span> 讓客人體驗比較保險`;
+        document.getElementById('toric-step2-hint').innerHTML = `💡 拿出試片規格建議：<br>👉 <span class="text-xl text-slate-900 font-black">DIA: ${trialDia} mm</span><br>👉 <span class="text-xl text-slate-900 font-black">BC 大約: ${trialBc} mm</span>`;
       }
     }
 
@@ -796,7 +864,7 @@
 
       document.getElementById('res-t-bc1').innerText = bc1_mm; document.getElementById('res-t-p1').innerText = p1;
       document.getElementById('res-t-bc2').innerText = bc2_mm; document.getElementById('res-t-p2').innerText = p2;
-      document.getElementById('res-t-dia').innerText = finalDia; document.getElementById('res-t-notes').innerText = notes || '無';
+      document.getElementById('res-t-dia').innerText = finalDia; 
       document.getElementById('toric-result').classList.remove('hidden');
       sessionData.toric[eye].res = { bc1: bc1_mm, p1, bc2: bc2_mm, p2, dia: finalDia, notes };
     }
