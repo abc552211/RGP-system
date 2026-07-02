@@ -146,141 +146,141 @@
   </div>
 
   <script>
-    // Supabase Initialization (Placeholder)
-    const supabaseUrl = 'https://YOUR_PROJECT_ID.supabase.co';
-    const supabaseKey = 'YOUR_ANON_KEY';
-    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+    // Supabase Initialization (修正變數名稱避免衝突)
+  const supabaseUrl = 'https://YOUR_PROJECT_ID.supabase.co';
+  const supabaseKey = 'YOUR_ANON_KEY';
+  const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    // Tab Switching Logic
-    function switchTab(tab) {
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-      document.querySelectorAll('button[id^="tab-"]').forEach(el => {
-        el.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
-        el.classList.add('text-gray-500');
-      });
-      document.getElementById(`content-${tab}`).classList.add('active');
-      const activeBtn = document.getElementById(`tab-${tab}`);
-      activeBtn.classList.remove('text-gray-500');
-      activeBtn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+  // Tab Switching Logic
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('button[id^="tab-"]').forEach(el => {
+      el.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+      el.classList.add('text-gray-500');
+    });
+    document.getElementById(`content-${tab}`).classList.add('active');
+    const activeBtn = document.getElementById(`tab-${tab}`);
+    activeBtn.classList.remove('text-gray-500');
+    activeBtn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+  }
+
+  // Utility: Round to 0.25
+  function round025(val) {
+    return Math.round(val * 4) / 4;
+  }
+
+  // Utility: Vertex Calculation
+  function calcVertex(power, vd_mm) {
+    if (!power) return 0;
+    const d = vd_mm / 1000;
+    return power / (1 - d * power);
+  }
+
+  // --- Tab 1: SCL Logic ---
+  async function calcSCL() {
+    const sph = parseFloat(document.getElementById('scl-sph').value) || 0;
+    const cyl = parseFloat(document.getElementById('scl-cyl').value) || 0;
+    const vd = parseFloat(document.getElementById('scl-vd').value) || 12;
+    const flatK = parseFloat(document.getElementById('scl-k').value) || 0;
+
+    const cl_sph_raw = calcVertex(sph, vd);
+    const glasses_total = sph + cyl;
+    const cl_total_raw = calcVertex(glasses_total, vd);
+    const cl_cyl_raw = cl_total_raw - cl_sph_raw;
+
+    const scl_sph_rounded = round025(cl_sph_raw);
+    const scl_cyl_rounded = round025(cl_cyl_raw);
+    const se = round025(scl_sph_rounded + (scl_cyl_rounded / 2));
+    const bc = (flatK * 1.1).toFixed(2);
+
+    document.getElementById('res-scl-sph').innerText = scl_sph_rounded > 0 ? `+${scl_sph_rounded.toFixed(2)}` : scl_sph_rounded.toFixed(2);
+    document.getElementById('res-scl-cyl').innerText = scl_cyl_rounded.toFixed(2);
+    document.getElementById('res-scl-se').innerText = se > 0 ? `+${se.toFixed(2)}` : se.toFixed(2);
+    document.getElementById('res-scl-bc').innerText = bc;
+    document.getElementById('scl-result').classList.remove('hidden');
+
+    // Supabase Query (使用修正後的 supabaseClient)
+    try {
+      const { data, error } = await supabaseClient
+        .from('scl_products')
+        .select('*')
+        .eq('sph', scl_sph_rounded)
+        .eq('cyl', scl_cyl_rounded);
+      console.log("Supabase 查詢結果:", data);
+    } catch (e) {
+      console.log("Supabase 尚未配置完整 API Key:", e);
     }
+  }
 
-    // Utility: Round to 0.25
-    function round025(val) {
-      return Math.round(val * 4) / 4;
+  // --- Tab 2: RGP Logic ---
+  document.getElementById('rgp-r1').addEventListener('input', updateRgpHint);
+  document.getElementById('rgp-r2').addEventListener('input', updateRgpHint);
+
+  function updateRgpHint() {
+    const r1 = parseFloat(document.getElementById('rgp-r1').value) || 0;
+    const r2 = parseFloat(document.getElementById('rgp-r2').value) || 0;
+    if(r1 && r2) {
+      const avgR = ((r1 + r2) / 2).toFixed(2);
+      document.getElementById('rgp-hint-r').innerText = `均 r 提示: ${avgR} mm`;
     }
+  }
 
-    // Utility: Vertex Calculation
-    function calcVertex(power, vd_mm) {
-      if (!power) return 0;
-      const d = vd_mm / 1000;
-      return power / (1 - d * power);
+  function calcRgpStep3() {
+    const r1 = parseFloat(document.getElementById('rgp-r1').value);
+    const trialDia = parseFloat(document.getElementById('rgp-trial-dia').value);
+    if (r1 && trialDia) {
+      const suggestedBC = (r1 - (9.8 - trialDia) * 0.5).toFixed(2);
+      document.getElementById('rgp-step3-hint').innerText = `你 DIA ${trialDia}，那你 BC 就拿 ${suggestedBC} 先試看染色`;
+      document.getElementById('rgp-step4-label').innerText = `沒有 ${suggestedBC}？或 ${suggestedBC} 不好？輸入你現在要戴什麼 BC？`;
     }
+  }
 
-    // --- Tab 1: SCL Logic ---
-    async function calcSCL() {
-      const sph = parseFloat(document.getElementById('scl-sph').value) || 0;
-      const cyl = parseFloat(document.getElementById('scl-cyl').value) || 0;
-      const vd = parseFloat(document.getElementById('scl-vd').value) || 12;
-      const flatK = parseFloat(document.getElementById('scl-k').value) || 0;
+  function calcRGP() {
+    const orSph = parseFloat(document.getElementById('rgp-or-sph').value) || 0;
+    const vd = parseFloat(document.getElementById('rgp-or-vd').value) || 12;
+    const trialPower = parseFloat(document.getElementById('rgp-trial-power').value) || 0;
+    const actualBc = document.getElementById('rgp-actual-bc').value;
+    const finalDia = document.getElementById('rgp-final-dia').value;
 
-      const cl_sph_raw = calcVertex(sph, vd);
-      const glasses_total = sph + cyl;
-      const cl_total_raw = calcVertex(glasses_total, vd);
-      const cl_cyl_raw = cl_total_raw - cl_sph_raw;
+    const vertexedOr = round025(calcVertex(orSph, vd));
+    const finalPower = trialPower + vertexedOr;
 
-      const scl_sph_rounded = round025(cl_sph_raw);
-      const scl_cyl_rounded = round025(cl_cyl_raw);
-      const se = round025(scl_sph_rounded + (scl_cyl_rounded / 2));
-      const bc = (flatK * 1.1).toFixed(2);
+    document.getElementById('res-rgp-power').innerText = finalPower > 0 ? `+${finalPower.toFixed(2)}` : finalPower.toFixed(2);
+    document.getElementById('res-rgp-bc').innerText = actualBc;
+    document.getElementById('res-rgp-dia').innerText = finalDia;
+    document.getElementById('rgp-result').classList.remove('hidden');
+  }
 
-      document.getElementById('res-scl-sph').innerText = scl_sph_rounded > 0 ? `+${scl_sph_rounded.toFixed(2)}` : scl_sph_rounded.toFixed(2);
-      document.getElementById('res-scl-cyl').innerText = scl_cyl_rounded.toFixed(2);
-      document.getElementById('res-scl-se').innerText = se > 0 ? `+${se.toFixed(2)}` : se.toFixed(2);
-      document.getElementById('res-scl-bc').innerText = bc;
-      document.getElementById('scl-result').classList.remove('hidden');
+  // --- Tab 3: RGP Toric Logic ---
+  function calcToric() {
+    const sph = parseFloat(document.getElementById('t-sph').value) || 0;
+    const cyl = parseFloat(document.getElementById('t-cyl').value) || 0;
+    const vd = parseFloat(document.getElementById('t-vd').value) || 12;
+    const k1 = parseFloat(document.getElementById('t-k1').value) || 0;
+    const k2 = parseFloat(document.getElementById('t-k2').value) || 0;
 
-      // Mock Supabase Query (Will fail unless configured)
-      try {
-        const { data, error } = await supabase
-          .from('scl_products')
-          .select('*')
-          .eq('sph', scl_sph_rounded)
-          .eq('cyl', scl_cyl_rounded);
-        console.log("Supabase Fetch Attempted:", data);
-      } catch (e) {
-        console.log("Supabase not fully configured yet.");
-      }
-    }
+    const meridian1_raw = sph;
+    const meridian2_raw = sph + cyl;
 
-    // --- Tab 2: RGP Logic ---
-    document.getElementById('rgp-r1').addEventListener('input', updateRgpHint);
-    document.getElementById('rgp-r2').addEventListener('input', updateRgpHint);
+    const vertex_1 = round025(calcVertex(meridian1_raw, vd));
+    const vertex_2 = round025(calcVertex(meridian2_raw, vd));
 
-    function updateRgpHint() {
-      const r1 = parseFloat(document.getElementById('rgp-r1').value) || 0;
-      const r2 = parseFloat(document.getElementById('rgp-r2').value) || 0;
-      if(r1 && r2) {
-        const avgR = ((r1 + r2) / 2).toFixed(2);
-        document.getElementById('rgp-hint-r').innerText = `均 r 提示: ${avgR} mm`;
-      }
-    }
+    const lens_fk_diopter = k1 - 0.25;
+    const lens_sk_diopter = k2 - 1.00;
 
-    function calcRgpStep3() {
-      const r1 = parseFloat(document.getElementById('rgp-r1').value);
-      const trialDia = parseFloat(document.getElementById('rgp-trial-dia').value);
-      if (r1 && trialDia) {
-        const suggestedBC = (r1 - (9.8 - trialDia) * 0.5).toFixed(2);
-        document.getElementById('rgp-step3-hint').innerText = `你 DIA ${trialDia}，那你 BC 就拿 ${suggestedBC} 先試看染色`;
-        document.getElementById('rgp-step4-label').innerText = `沒有 ${suggestedBC}？或 ${suggestedBC} 不好？輸入你現在要戴什麼 BC？`;
-      }
-    }
+    const bc1_mm = (337.5 / lens_fk_diopter).toFixed(2);
+    const bc2_mm = (337.5 / lens_sk_diopter).toFixed(2);
 
-    function calcRGP() {
-      const orSph = parseFloat(document.getElementById('rgp-or-sph').value) || 0;
-      const vd = parseFloat(document.getElementById('rgp-or-vd').value) || 12;
-      const trialPower = parseFloat(document.getElementById('rgp-trial-power').value) || 0;
-      const actualBc = document.getElementById('rgp-actual-bc').value;
-      const finalDia = document.getElementById('rgp-final-dia').value;
+    const final_power_1 = vertex_1 - (-0.25);
+    const final_power_2 = vertex_2 - (-1.00);
 
-      const vertexedOr = round025(calcVertex(orSph, vd));
-      const finalPower = trialPower + vertexedOr;
-
-      document.getElementById('res-rgp-power').innerText = finalPower > 0 ? `+${finalPower.toFixed(2)}` : finalPower.toFixed(2);
-      document.getElementById('res-rgp-bc').innerText = actualBc;
-      document.getElementById('res-rgp-dia').innerText = finalDia;
-      document.getElementById('rgp-result').classList.remove('hidden');
-    }
-
-    // --- Tab 3: RGP Toric Logic ---
-    function calcToric() {
-      const sph = parseFloat(document.getElementById('t-sph').value) || 0;
-      const cyl = parseFloat(document.getElementById('t-cyl').value) || 0;
-      const vd = parseFloat(document.getElementById('t-vd').value) || 12;
-      const k1 = parseFloat(document.getElementById('t-k1').value) || 0;
-      const k2 = parseFloat(document.getElementById('t-k2').value) || 0;
-
-      const meridian1_raw = sph;
-      const meridian2_raw = sph + cyl;
-
-      const vertex_1 = round025(calcVertex(meridian1_raw, vd));
-      const vertex_2 = round025(calcVertex(meridian2_raw, vd));
-
-      const lens_fk_diopter = k1 - 0.25;
-      const lens_sk_diopter = k2 - 1.00;
-
-      const bc1_mm = (337.5 / lens_fk_diopter).toFixed(2);
-      const bc2_mm = (337.5 / lens_sk_diopter).toFixed(2);
-
-      const final_power_1 = vertex_1 - (-0.25);
-      const final_power_2 = vertex_2 - (-1.00);
-
-      document.getElementById('res-t-bc1').innerText = bc1_mm;
-      document.getElementById('res-t-p1').innerText = final_power_1 > 0 ? `+${final_power_1.toFixed(2)}` : final_power_1.toFixed(2);
-      document.getElementById('res-t-bc2').innerText = bc2_mm;
-      document.getElementById('res-t-p2').innerText = final_power_2 > 0 ? `+${final_power_2.toFixed(2)}` : final_power_2.toFixed(2);
-      
-      document.getElementById('toric-result').classList.remove('hidden');
-    }
+    document.getElementById('res-t-bc1').innerText = bc1_mm;
+    document.getElementById('res-t-p1').innerText = final_power_1 > 0 ? `+${final_power_1.toFixed(2)}` : final_power_1.toFixed(2);
+    document.getElementById('res-t-bc2').innerText = bc2_mm;
+    document.getElementById('res-t-p2').innerText = final_power_2 > 0 ? `+${final_power_2.toFixed(2)}` : final_power_2.toFixed(2);
+    
+    document.getElementById('toric-result').classList.remove('hidden');
+  }
   </script>
 </body>
 </html>
