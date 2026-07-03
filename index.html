@@ -20,6 +20,7 @@
     #print-modal-backdrop, #optometrist-modal-backdrop { background-color: rgba(0,0,0,0.4); }
 
     @media print {
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       body { background: white !important; color: black !important; }
       body > div:not(#print-area-wrapper) { display: none !important; }
       #print-area-wrapper { display: block !important; width: 100%; padding: 0; margin: 0; }
@@ -65,7 +66,6 @@
       </button>
     </div>
     
-    <!-- 眼別選擇器 -->
     <div id="eye-selector" class="hidden mb-6 bg-white p-4 rounded-xl shadow-sm border flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
       <div class="flex items-center gap-6">
         <span class="font-bold text-slate-500 text-sm">當前輸入眼別：</span>
@@ -86,7 +86,6 @@
       </div>
     </div>
 
-    <!-- 1. CRM -->
     <div id="view-crm" class="view-content active max-w-5xl mx-auto">
       <h2 class="text-xl font-bold mb-6 text-slate-800 tracking-wide">客戶資料與歷史病歷</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -119,7 +118,6 @@
       </div>
     </div>
 
-    <!-- 2. SCL -->
     <div id="view-scl" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border transition-colors duration-300">
       <div class="flex justify-between items-center mb-6 border-b border-slate-400 pb-3">
         <h2 class="text-lg font-bold text-slate-800">軟式隱形眼鏡 (SCL) 換算</h2>
@@ -133,17 +131,7 @@
         <div><label class="block font-bold text-slate-600 mb-1">平R / Flat K (mm)</label><input type="number" id="scl-k" step="0.01" class="w-full border p-2 rounded-lg shadow-inner outline-none"></div>
         <div><label class="block font-bold text-slate-600 mb-1">ADD (老花選填)</label><input type="text" id="scl-add" placeholder="例如: +1.50" class="w-full border border-slate-300 bg-white/50 p-2 rounded-lg shadow-inner outline-none"></div>
       </div>
-      <div class="col-span-2 md:col-span-3 border-t border-slate-200 pt-3 mt-2 mb-4">
-  <label class="block font-bold text-slate-700 mb-2">散光軸度微調 (LARS 順加逆減)</label>
-  <div class="flex gap-2 text-sm">
-    <select id="scl-lars-dir" class="border p-2 rounded-lg outline-none bg-slate-50 shadow-inner w-1/2">
-      <option value="none">無旋轉偏移</option>
-      <option value="L">順時針偏移 (Left/加)</option>
-      <option value="R">逆時針偏移 (Right/減)</option>
-    </select>
-    <input type="number" id="scl-lars-deg" placeholder="偏移度數 (例: 10)" class="border p-2 rounded-lg outline-none shadow-inner w-1/2">
-  </div>
-</div>
+
       <div class="mb-6 text-sm">
         <label class="block font-bold text-slate-600 mb-1">備註 (Notes)</label>
         <input type="text" id="scl-notes" placeholder="紀錄試戴狀況..." class="w-full border p-2.5 rounded-lg shadow-inner outline-none">
@@ -152,17 +140,69 @@
       
       <div id="scl-result" class="mt-6 hidden bg-white p-6 rounded-xl border-2 border-slate-700 shadow-md">
         <h3 class="font-black text-slate-800 mb-3 text-sm tracking-wider">🎯 當前眼別處方結果：</h3>
-        <div class="space-y-2 text-slate-900 font-bold">
-          <p class="text-xl">建議度數 (SPH): <span id="res-scl-sph" class="font-black text-3xl text-blue-800"></span> / 散光 (CYL): <span id="res-scl-cyl" class="font-black text-3xl text-slate-800"></span></p>
-          <p class="text-xl">等效球面 (S.E.): <span id="res-scl-se" class="font-black text-3xl text-emerald-800"></span></p>
-          <p class="text-xl">建議基弧 (B.C.): <span id="res-scl-bc" class="font-black text-3xl text-purple-800"></span> mm</p>
-          <p class="text-lg text-slate-700">老花加入度 (ADD): <span id="res-scl-add" class="text-2xl font-black"></span></p>
+        <div class="space-y-3 text-slate-900 font-bold">
+          <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg shadow-sm transition-all duration-300">
+             <p class="text-sm text-blue-800 mb-1">最終建議處方 (SPH / CYL x <span class="text-orange-600">最終訂製軸</span>)</p>
+             <p class="text-3xl font-black text-blue-900" id="res-scl-prescription"></p>
+          </div>
+          <div class="flex flex-wrap gap-6 text-sm">
+             <p>等效球面 (S.E.): <span id="res-scl-se" class="font-black text-lg text-emerald-800"></span></p>
+             <p>建議基弧 (B.C.): <span id="res-scl-bc" class="font-black text-lg text-purple-800"></span> mm</p>
+             <p class="text-slate-700">老花 (ADD): <span id="res-scl-add" class="text-lg font-black"></span></p>
+          </div>
+        </div>
+
+        <div id="res-scl-visual-container" class="w-full"></div>
+
+        <div id="scl-lars-control-panel" class="border-t border-slate-200 pt-5 mt-5 no-print hidden">
+          <label class="block font-bold text-slate-700 mb-3">🔄 散光軸度動態補償 (LARS) 教學與調整</label>
+          <div class="bg-slate-800 p-5 rounded-xl shadow-inner mb-3 space-y-5">
+             
+             <div>
+               <div class="flex justify-between text-xs text-slate-300 font-bold mb-2">
+                 <span>左偏 (L/順時針)</span>
+                 <span class="text-white text-sm bg-slate-700 px-2 py-0.5 rounded" id="scl-rotation-val">鏡片實際偏位: 0°</span>
+                 <span>右偏 (R/逆時針)</span>
+               </div>
+               <input type="range" id="scl-rotation-slider" min="-30" max="30" step="1" value="0" class="w-full mb-1 accent-white" oninput="
+                  const v = parseInt(this.value);
+                  // v < 0 代表滑桿在左邊(L)，v > 0 代表滑桿在右邊(R)
+                  document.getElementById('scl-rotation-val').innerText = '鏡片實際偏位: ' + (v < 0 ? '左偏 (L) ' + Math.abs(v) + '°' : (v > 0 ? '右偏 (R) ' + v + '°' : '無偏移 0°'));
+                  calcSCL(true);
+               ">
+               <div class="flex justify-between text-[10px] text-slate-500 font-bold px-1 mt-1"><span>-30°</span><span>0°</span><span>+30°</span></div>
+             </div>
+
+             <div class="pt-4 border-t border-slate-600">
+               <div class="flex justify-between text-xs text-slate-300 font-bold mb-2 items-center">
+                 <span>1°</span>
+                 <span class="text-cyan-400 text-sm bg-cyan-950/50 px-2 py-0.5 rounded border border-cyan-800" id="scl-new-axis-val">新產品訂製軸: -°</span>
+                 <span>180°</span>
+               </div>
+               <input type="range" id="scl-new-axis-slider" min="1" max="180" step="1" value="180" class="w-full mb-1 accent-cyan-500" oninput="
+                  document.getElementById('scl-new-axis-val').innerText = '新產品訂製軸: ' + this.value + '°';
+                  calcSCL(true);
+               ">
+               
+               <div class="flex justify-between items-center mt-3 bg-slate-900 p-2.5 rounded-lg border border-slate-700">
+                 <span class="text-[11px] text-slate-400 font-bold">💡 提示：調整青色線，使它與黃色虛線完美重合！</span>
+                 <button onclick="autoLarsAlign()" class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded font-bold shadow-sm transition-colors">⚡ 自動對齊</button>
+               </div>
+             </div>
+          </div>
+          
+          <div class="flex gap-2 items-center">
+            <label class="font-bold text-slate-600 text-sm w-1/3">鏡片定位刻線：</label>
+            <select id="scl-marks" class="border p-2 rounded-lg text-sm outline-none bg-slate-50 shadow-inner w-2/3" onchange="calcSCL(true);">
+              <option value="none">無刻線</option>
+              <option value="6">單刻線 (6 點鐘)</option>
+              <option value="39">雙刻線 (3 與 9 點鐘)</option>
+            </select>
+          </div>
         </div>
       </div>
     </div>
-
-    <!-- 3. RGP -->
-    <div id="view-rgp" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border transition-colors duration-300">
+<div id="view-rgp" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border transition-colors duration-300">
       <div class="flex justify-between items-center mb-6 border-b border-slate-400 pb-3">
         <h2 class="text-lg font-bold text-slate-800">RGP 球面硬式試片驗配</h2>
         <button onclick="saveCombinedRecord('rgp')" class="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm">💾 儲存雙眼病歷</button>
@@ -208,18 +248,10 @@
             <p class="text-xl">最終基弧 (BC): <span id="res-rgp-bc" class="font-black text-3xl text-emerald-800"></span> mm</p>
             <p class="text-xl">最終直徑 (DIA): <span id="res-rgp-dia" class="font-black text-3xl text-purple-800"></span> mm</p>
           </div>
-          <div class="mt-4 border-t-2 border-slate-200 pt-4 flex gap-5 items-center">
-          <div id="rgp-fl-pattern" class="w-16 h-16 rounded-full border-2 border-slate-700 shadow-inner transition-all duration-500"></div>
-          <div>
-            <p class="text-xs text-slate-500 font-bold mb-1">🧪 螢光染色與淚液厚度預測</p>
-            <p id="rgp-fl-text" class="text-xl font-black text-slate-800"></p>
-          </div>
-        </div>
         </div>
       </div>
     </div>
 
-    <!-- 4. Toric -->
     <div id="view-toric" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border transition-colors duration-300">
       <div class="flex justify-between items-center mb-6 border-b border-slate-400 pb-3">
         <h2 class="text-lg font-bold text-slate-800">想配Toric RGP? 聽我勸 照步驟吧!</h2>
@@ -270,7 +302,6 @@
 
   </div>
 
-  <!-- 雲端驗光人員管理彈窗 -->
   <div id="optometrist-modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center hidden p-4 no-print">
     <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl border p-6">
       <h3 class="font-bold text-slate-800 text-base mb-4 border-b pb-2">⚙️ 管理雲端驗光人員名冊</h3>
@@ -300,7 +331,6 @@
     </div>
   </div>
 
-  <!-- 處方報告列印前預覽彈窗 (含免責警語與簽章區預覽) -->
   <div id="print-modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center hidden p-4 no-print">
     <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border">
       <div class="p-4 border-b flex justify-between items-center bg-slate-100 rounded-t-2xl">
@@ -315,7 +345,6 @@
     </div>
   </div>
 
-  <!-- 真實列印專用 DOM 區塊 (加入嚴謹免責警語與專業簽章圓框) -->
   <div id="print-area-wrapper" style="display: none;">
     <div style="text-align: center; margin-bottom: 8px; border-b: 2px solid #334155; padding-bottom: 4px;">
       <h1 style="font-size: 18px; font-weight: bold; margin: 0; color: #1e293b;">隱形眼鏡驗配處方報告</h1>
@@ -348,12 +377,15 @@
       </div>
     </div>
 
-    <!-- 警語與簽章落款區 -->
     <div style="font-size: 9px; color: #475569; max-width: 75%; line-height: 1.6; text-align: justify;">
         <span style="font-size: 10px; font-weight: bold; color: #334155;">⚠️ 臨床免責與使用限制聲明：</span><br>
         <b>1. 文書性質：</b>本數據僅供特約合作單位之內部試戴評估與鏡片訂製參考，非屬《驗光人員法》或《醫師法》所定義之正式驗光處方或醫療診斷報告書。<br>
         <b>2. 擔保範圍：</b>本單位僅對「特約合作單位所提供之專屬醫療器材（隱形眼鏡）」進行參數配置之數據擔保。各廠牌鏡片之幾何設計與材質均不相同，本數據不得跨品牌直接套用。<br>
         <b>3. 責任排除：</b>本報告明令禁止上述約定範圍外之任何用途。若持本數據於非特約授權場所、網路平台進行鏡片配製或購買，本單位概不負任何形式之法律與臨床醫療責任。配戴後請定期由眼科醫師進行追蹤檢查。
+      </div>
+<div style="display: flex; align-items: center; gap: 8px; margin-right: 15px;">
+        <p style="margin: 0; font-size: 10px; font-weight: bold; color: #94a3b8; text-align: right; line-height: 1.3;">驗光人員<br>簽章處</p>
+        <div style="width: 70px; height: 70px; border: 1px dashed #94a3b8; border-radius: 6px;"></div>
       </div>
   </div>
 
@@ -637,7 +669,8 @@
       if(view === 'crm') { eyeSelector.classList.add('hidden'); } 
       else { eyeSelector.classList.remove('hidden'); updateWorkspaceColor(); restoreInputsAndResultsFromSession(); }
     }
-    // 1. 取得當前選擇的眼別 (OD 或 OS)
+    
+// 1. 取得當前選擇的眼別 (OD 或 OS)
 function getSelectedEye() {
   const selected = document.querySelector('input[name="eye"]:checked');
   return selected ? selected.value : 'OD'; // 預設返回右眼
@@ -645,7 +678,6 @@ function getSelectedEye() {
 
 // 2. 清空指定 Tab 的輸入框與結果 (提供空函數或基礎邏輯以避免報錯)
 function clearInputsAndResultsOfTab(type) {
-  // 如果你暫時不需要清空畫面邏輯，只要保留這個空函數，切換功能就不會當機
   // 若有需要，可以後續再將清空各 input 的邏輯寫在這裡
 }
 
@@ -686,14 +718,23 @@ function clearInputsAndResultsOfTab(type) {
       container.innerHTML = userRecords.map(r => {
         const dateStr = new Date(r.created_at).toLocaleDateString('zh-TW');
         let summaryOD = '-', summaryOS = '-';
-        if (r.parameters) {
-          if (r.type === 'scl' && r.parameters.OD) summaryOD = `${r.parameters.OD.sph}/${r.parameters.OD.cyl}`;
-          if (r.type === 'scl' && r.parameters.OS) summaryOS = `${r.parameters.OS.sph}/${r.parameters.OS.cyl}`;
-          if (r.type === 'rgp' && r.parameters.OD) summaryOD = `${r.parameters.OD.power}D`;
-          if (r.type === 'rgp' && r.parameters.OS) summaryOS = `${r.parameters.OS.power}D`;
-          if (r.type === 'toric' && r.parameters.OD) summaryOD = `F:${r.parameters.OD.p1}D`;
-          if (r.type === 'toric' && r.parameters.OS) summaryOS = `F:${r.parameters.OS.p1}D`;
+        if (r.type === 'scl') {
+          if(r.parameters.OD) {
+            let precise = r.parameters.OD.preciseSph ? `(${r.parameters.OD.preciseSph})` : '';
+            let ax = r.parameters.OD.axis ? ` Ax${r.parameters.OD.axis}` : '';
+            summaryOD = `${r.parameters.OD.sph}${precise} / ${r.parameters.OD.cyl}${ax}`;
+          }
+          if(r.parameters.OS) {
+            let precise = r.parameters.OS.preciseSph ? `(${r.parameters.OS.preciseSph})` : '';
+            let ax = r.parameters.OS.axis ? ` Ax${r.parameters.OS.axis}` : '';
+            summaryOS = `${r.parameters.OS.sph}${precise} / ${r.parameters.OS.cyl}${ax}`;
+          }
         }
+        if (r.type === 'rgp' && r.parameters.OD) summaryOD = `${r.parameters.OD.power}D`;
+        if (r.type === 'rgp' && r.parameters.OS) summaryOS = `${r.parameters.OS.power}D`;
+        if (r.type === 'toric' && r.parameters.OD) summaryOD = `F:${r.parameters.OD.p1}D`;
+        if (r.type === 'toric' && r.parameters.OS) summaryOS = `F:${r.parameters.OS.p1}D`;
+
         return `
         <div class="p-3 bg-white border rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-2 shadow-sm text-xs">
           <div class="flex-1">
@@ -777,7 +818,6 @@ function clearInputsAndResultsOfTab(type) {
               ${pOS ? `<img src="${pOS}" class="mt-2 w-full h-48 object-contain border rounded">` : '<p class="text-[10px] text-slate-400 italic mt-2">無鏡片照片</p>'}
             </div>
           </div>
-          <!-- 法律警語與蓋章預覽 -->
           <div class="max-w-[75%] space-y-1 text-justify">
               <p class="font-bold text-slate-600 text-[11px] mb-1">⚠️ 臨床免責與使用限制聲明：</p>
               <p><b>1. 文書性質：</b>本單僅供特約合作單位內部參考，非屬法規定義之正式驗光處方或醫療報告書。</p>
@@ -810,72 +850,129 @@ function clearInputsAndResultsOfTab(type) {
                  <p style="margin:2px 0;"><b>陡峭軸:</b> BC ${eyeData.bc2} mm / <b>${eyeData.p2} D</b></p><p style="margin:2px 0;"><b>直徑 (DIA):</b> ${eyeData.dia} mm</p>`;
       }
       if(eyeData.notes) html += `<div style="margin-top:4px; padding-top:2px; border-top:1px dashed #cbd5e1; font-size:10px; color:#64748b;"><b>臨床備註：</b> ${eyeData.notes}</div>`;
-      html += '</div>'; return html;
+      if(eyeData.visualHtml) { html += `<div style="margin-top:8px; display:flex; justify-content:center;">${eyeData.visualHtml}</div>`; }
+    html += '</div>'; return html;
     }
 
     function round025(val) { return Math.round(val * 4) / 4; }
     function calcVertex(power, vd_mm) { if (!power) return 0; return power / (1 - (vd_mm / 1000) * power); }
     function formatD(val) { return val > 0 ? `+${val.toFixed(2)}` : val.toFixed(2); }
 
-    function calcSCL() {
-  const eye = getSelectedEye(); 
-  const sph = parseFloat(document.getElementById('scl-sph').value) || 0;
-  const cyl = parseFloat(document.getElementById('scl-cyl').value) || 0; 
-  let axis = parseInt(document.getElementById('scl-axis').value) || 0;
-  const vd = parseFloat(document.getElementById('scl-vd').value) || 12;
-  const flatK = parseFloat(document.getElementById('scl-k').value) || 0; 
-  const add = document.getElementById('scl-add').value || '';
-  const notes = document.getElementById('scl-notes').value || '';
+    function autoLarsAlign() {
+      const axis = parseInt(document.getElementById('scl-axis').value) || 0;
+      if(axis === 0) return;
+      const rot = parseInt(document.getElementById('scl-rotation-slider').value) || 0;
+      
+      // 正宗 LARS 原理：左(L/負數)加，右(R/正數)減
+      let newAxis = (axis - rot) % 180;
+      if (newAxis <= 0) newAxis += 180;
+      
+      const newAxisSlider = document.getElementById('scl-new-axis-slider');
+      if(newAxisSlider) {
+        newAxisSlider.value = newAxis;
+        document.getElementById('scl-new-axis-val').innerText = '新產品訂製軸: ' + newAxis + '°';
+        calcSCL(true);
+      }
+    }
 
-  // LARS 順加逆減邏輯
-  const larsDir = document.getElementById('scl-lars-dir').value;
-  const larsDeg = parseInt(document.getElementById('scl-lars-deg').value) || 0;
-  let finalAxis = axis;
-  let larsIcon = '';
-  
-  if (larsDir === 'L' && larsDeg > 0) {
-    finalAxis = (axis + larsDeg) % 180;
-    if(finalAxis === 0) finalAxis = 180;
-    larsIcon = `🔄 順加 ${larsDeg}°`;
-  } else if (larsDir === 'R' && larsDeg > 0) {
-    finalAxis = (axis - larsDeg) % 180;
-    if(finalAxis <= 0) finalAxis += 180;
-    larsIcon = `🔃 逆減 ${larsDeg}°`;
-  }
+    function calcSCL(isSliderDrag = false) {
+      const eye = getSelectedEye(); 
+      const sph = parseFloat(document.getElementById('scl-sph').value) || 0;
+      const cyl = parseFloat(document.getElementById('scl-cyl').value) || 0; 
+      let axis = parseInt(document.getElementById('scl-axis').value) || 0;
+      const vd = parseFloat(document.getElementById('scl-vd').value) || 12;
+      const flatK = parseFloat(document.getElementById('scl-k').value) || 0; 
+      const add = document.getElementById('scl-add').value || '';
+      const notes = document.getElementById('scl-notes').value || '';
 
-  const cl_sph_raw = calcVertex(sph, vd); 
-  const cl_total_raw = calcVertex(sph + cyl, vd);
-  const scl_sph_rounded = round025(cl_sph_raw); 
-  const scl_cyl_rounded = round025(cl_total_raw - cl_sph_raw);
-  const se = round025(scl_sph_rounded + (scl_cyl_rounded / 2)); 
-  const bc = flatK ? (flatK * 1.1).toFixed(2) : '0.00';
-  const strSph = formatD(scl_sph_rounded); 
-  const strSe = formatD(se);
+      const rotSlider = document.getElementById('scl-rotation-slider');
+      const newAxisSlider = document.getElementById('scl-new-axis-slider');
 
-  // 取得帶有正負號的精準小數第二位數值
-const preciseSphStr = formatD(cl_sph_raw); 
-// 輸出主度數，並在後方附加較小字體、次要顏色的精準值
-document.getElementById('res-scl-sph').innerHTML = `${strSph} <span class="text-lg text-slate-400 font-medium tracking-normal ml-1">(${preciseSphStr})</span>`; 
-  document.getElementById('res-scl-cyl').innerText = scl_cyl_rounded.toFixed(2);
-  document.getElementById('res-scl-se').innerText = strSe; 
-  document.getElementById('res-scl-bc').innerText = bc;
-  document.getElementById('res-scl-add').innerText = add || '無';
-  
-  // 如果有散光，顯示軸度與 LARS 結果
-  let axisDisplay = document.getElementById('res-scl-axis-display');
-  if (!axisDisplay) {
-    document.getElementById('res-scl-cyl').parentElement.insertAdjacentHTML('afterend', `<p class="text-xl text-slate-600" id="res-scl-axis-display"></p>`);
-    axisDisplay = document.getElementById('res-scl-axis-display');
-  }
-  if (cyl !== 0) {
-    axisDisplay.innerHTML = `最終軸度 (AXIS): <span class="font-black text-3xl text-orange-600">${finalAxis}</span> ${larsIcon ? `<span class="text-sm bg-orange-100 text-orange-800 px-2 py-1 rounded ml-2">${larsIcon}</span>` : ''}`;
-  } else {
-    axisDisplay.innerHTML = '';
-  }
+      if (!isSliderDrag) {
+        if(rotSlider) { rotSlider.value = 0; document.getElementById('scl-rotation-val').innerText = '鏡片實際偏位: 0°'; }
+        if(newAxisSlider && axis !== 0) { newAxisSlider.value = axis; document.getElementById('scl-new-axis-val').innerText = '新產品訂製軸: ' + axis + '°'; }
+      }
 
-  document.getElementById('scl-result').classList.remove('hidden');
-  sessionData.scl[eye].res = { sph: strSph, cyl: scl_cyl_rounded, axis: finalAxis, se: strSe, bc, add, notes: notes + (larsIcon ? ` [LARS: ${larsIcon}]` : '') };
-}
+      let lensRot = rotSlider ? parseInt(rotSlider.value) : 0;
+      let newOrderedAxis = newAxisSlider && axis !== 0 ? parseInt(newAxisSlider.value) : axis;
+
+      const cl_sph_raw = calcVertex(sph, vd); 
+      const cl_total_raw = calcVertex(sph + cyl, vd);
+      const scl_sph_rounded = round025(cl_sph_raw); 
+      const scl_cyl_rounded = round025(cl_total_raw - cl_sph_raw);
+      const se = round025(scl_sph_rounded + (scl_cyl_rounded / 2)); 
+      const bc = flatK ? (flatK * 1.1).toFixed(2) : '0.00';
+      const strSph = formatD(scl_sph_rounded); 
+      const preciseSphStr = formatD(cl_sph_raw);
+      const strSe = formatD(se);
+
+      let prescriptionHtml = `${strSph} <span class="text-lg text-slate-500 font-medium tracking-normal ml-1">(${preciseSphStr})</span>`;
+      if (cyl !== 0) {
+          prescriptionHtml += ` <span class="text-slate-400 mx-2">/</span> ${scl_cyl_rounded.toFixed(2)} <span class="text-slate-400 mx-2">x</span> <span class="text-orange-600">${newOrderedAxis}</span>`;
+      }
+      document.getElementById('res-scl-prescription').innerHTML = prescriptionHtml;
+      document.getElementById('res-scl-se').innerText = strSe; 
+      document.getElementById('res-scl-bc').innerText = bc;
+      document.getElementById('res-scl-add').innerText = add || '無';
+
+      // --- 雙圖層視覺圖邏輯 ---
+      const sclMarks = document.getElementById('scl-marks') ? document.getElementById('scl-marks').value : 'none';
+      const visualBox = document.getElementById('res-scl-visual-container');
+      const controlPanel = document.getElementById('scl-lars-control-panel');
+      
+      const targetCss = axis * -1; // 目標固定軸
+      const lensRotCss = lensRot * -1; // 物理旋轉：左偏(負值)需對應順時針(正角度)旋轉
+      const newAxisCss = newOrderedAxis * -1; // 青線刻在鏡片上的位置
+
+      let visualHtmlStr = '';
+      if (cyl !== 0) {
+        visualHtmlStr = `
+          <div class="w-full bg-slate-900 print:bg-slate-100 p-6 print:p-2 rounded-xl border flex flex-col items-center relative overflow-hidden shadow-xl mt-6">
+            <p class="text-slate-300 print:text-slate-700 font-bold text-xs mb-4 uppercase">🎯 雙層物理旋轉模擬 (將青線對齊黃線)</p>
+            
+            <div class="relative w-64 h-64 print:w-40 print:h-40 rounded-full border-2 border-slate-700 print:border-slate-400 bg-slate-800 print:bg-white flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.5)] print:shadow-none">
+              
+              <div class="absolute w-full h-px bg-slate-700/50 print:bg-slate-300"></div>
+              <div class="absolute h-full w-px bg-slate-700/50 print:bg-slate-300"></div>
+              
+              <div class="absolute w-full h-0.5 border-t-2 border-dashed border-yellow-400 print:border-slate-600 shadow-[0_0_10px_rgba(250,204,21,0.5)] print:shadow-none z-10" style="transform: rotate(${targetCss}deg)"></div>
+              
+              <div class="absolute inset-2 rounded-full border border-cyan-500/30 bg-cyan-900/30 print:border-slate-300 print:bg-slate-50 transition-transform duration-75 flex items-center justify-center" style="transform: rotate(${lensRotCss}deg)">
+                
+                ${sclMarks === '6' ? `<div class="absolute bottom-2 w-2.5 h-7 bg-white print:bg-slate-900 shadow-[0_0_8px_white] rounded-full"></div>` : ''}
+                ${sclMarks === '39' ? `<div class="absolute left-2 w-7 h-2.5 bg-white print:bg-slate-900 shadow-[0_0_8px_white] rounded-full"></div><div class="absolute right-2 w-7 h-2.5 bg-white print:bg-slate-900 shadow-[0_0_8px_white] rounded-full"></div>` : ''}
+                
+                <div class="absolute w-full h-px border-t-2 border-dashed border-slate-400 opacity-60 print:border-slate-500" style="transform: rotate(${targetCss}deg)"></div>
+                
+                <div class="absolute w-full h-1.5 bg-cyan-400 print:bg-slate-800 shadow-[0_0_15px_#22d3ee] print:shadow-none" style="transform: rotate(${newAxisCss}deg)"></div>
+              </div>
+              
+              <div class="absolute w-16 h-16 print:w-10 print:h-10 bg-slate-950 print:bg-slate-200 rounded-full border-2 border-slate-700 print:border-slate-400 z-20 shadow-inner"></div>
+            </div>
+            
+            <div class="mt-6 flex flex-wrap justify-center gap-4 text-[10px] font-bold w-full bg-slate-950 print:bg-slate-200 p-3 rounded-lg border border-slate-800 print:border-slate-300">
+              <div class="flex items-center gap-1.5"><span class="w-4 h-0.5 border-t-2 border-dashed border-yellow-400"></span><span class="text-yellow-400 print:text-slate-700">客戶目標軸 (${axis}°)</span></div>
+              <div class="flex items-center gap-1.5"><span class="w-4 h-0.5 border-t-2 border-dashed border-slate-400"></span><span class="text-slate-400 print:text-slate-600">原產品跑位軸</span></div>
+              <div class="flex items-center gap-1.5"><span class="w-4 h-1.5 bg-cyan-400 print:bg-slate-700"></span><span class="text-cyan-400 print:text-slate-800">新訂製軸 (${newOrderedAxis}°)</span></div>
+            </div>
+          </div>
+        `;
+        if(visualBox) visualBox.innerHTML = visualHtmlStr;
+        if(controlPanel) controlPanel.classList.remove('hidden');
+      } else { 
+        if(visualBox) visualBox.innerHTML = ''; 
+        if(controlPanel) controlPanel.classList.add('hidden');
+      }
+
+      document.getElementById('scl-result').classList.remove('hidden');
+      
+      let dirStr = lensRot < 0 ? 'L' : (lensRot > 0 ? 'R' : '');
+      let finalLarsNote = lensRot !== 0 ? `[偏位 ${dirStr}${Math.abs(lensRot)}° ➜ 改訂 ${newOrderedAxis}°]` : '';
+      sessionData.scl[eye].res = { 
+        sph: strSph, preciseSph: preciseSphStr, cyl: scl_cyl_rounded, axis: newOrderedAxis, se: strSe, bc, add, notes: notes + (finalLarsNote ? ' ' + finalLarsNote : ''),
+        visualHtml: visualHtmlStr
+      };
+    }
 
     function calcRgpStep1() {
       const r1 = parseFloat(document.getElementById('rgp-r1').value) || 0;
@@ -914,36 +1011,85 @@ document.getElementById('res-scl-sph').innerHTML = `${strSph} <span class="text-
       document.getElementById('res-rgp-bc').innerText = `${strBc} mm (連帶補償 ${formatD(bcDiff)}mm)`;
       document.getElementById('res-rgp-dia').innerText = strDia; 
       document.getElementById('rgp-result').classList.remove('hidden');
-      // --- 螢光染色模擬圖邏輯 ---
-  const r1 = parseFloat(document.getElementById('rgp-r1').value) || 0;
-  const r2 = parseFloat(document.getElementById('rgp-r2').value) || 0;
-  const avgK = (r1 + r2) / 2;
-  const bcDiffAmount = finalBcCalculated - avgK;
-  
-  const patternEl = document.getElementById('rgp-fl-pattern');
-  const textEl = document.getElementById('rgp-fl-text');
 
-  if (avgK === 0) {
-    patternEl.style.background = '#e2e8f0';
-    textEl.innerText = '缺乏 K 值數據無法模擬';
-    textEl.className = 'text-base font-bold text-slate-400';
-  } else if (bcDiffAmount < -0.05) {
-    // 過陡 (Steep) -> 中央積水亮綠，周邊暗
-    patternEl.style.background = 'radial-gradient(circle, #4ade80 15%, #064e3b 80%, #22c55e 100%)';
-    textEl.innerText = '中央積水 (Steep Fit)';
-    textEl.className = 'text-xl font-black text-blue-700 tracking-wide';
-  } else if (bcDiffAmount > 0.05) {
-    // 太平 (Flat) -> 中央接觸暗黑，周邊積水亮綠
-    patternEl.style.background = 'radial-gradient(circle, #022c22 10%, #4ade80 75%, #064e3b 100%)';
-    textEl.innerText = '中央接觸 (Flat Fit)';
-    textEl.className = 'text-xl font-black text-red-600 tracking-wide';
-  } else {
-    // 理想 (Alignment) -> 均勻的薄螢光綠
-    patternEl.style.background = 'radial-gradient(circle, #22c55e 40%, #166534 95%)';
-    textEl.innerText = '理想配適 (Alignment)';
-    textEl.className = 'text-xl font-black text-emerald-600 tracking-wide';
-  }
-      sessionData.rgp[eye].res = { power: finalPowerRounded, bc: strBc, dia: strDia, notes };
+      // --- 螢光染色與動態 BC 調整器 (8mm 升級版) ---
+      const r1 = parseFloat(document.getElementById('rgp-r1').value) || 0;
+      const r2 = parseFloat(document.getElementById('rgp-r2').value) || 0;
+      const avgK = r1 && r2 ? (r1 + r2) / 2 : 0;
+      
+      let visualBox = document.getElementById('rgp-visual-container');
+      if (!visualBox) {
+        document.getElementById('rgp-result').insertAdjacentHTML('beforeend', `<div id="rgp-visual-container" class="mt-6 border-t-2 border-slate-200 pt-6 print:pt-2"></div>`);
+        visualBox = document.getElementById('rgp-visual-container');
+      }
+
+      window.updateRgpVisuals = function(simBc) {
+        const bcDiff = simBc - avgK;
+        let centerUm=0, midUm=0, edgeUm=0, farUm=0, flGradient='', fitText='', fitColor='';
+        
+        if (bcDiff < -0.05) { 
+          centerUm = Math.round(30 + Math.abs(bcDiff * 150)); midUm = 15; edgeUm = 5; farUm = 65;
+          flGradient = 'radial-gradient(circle, #4ade80 20%, #064e3b 65%, #22c55e 85%, #4ade80 100%)';
+          fitText = '中央積水 (Steep Fit)'; fitColor = 'text-blue-400';
+        } else if (bcDiff > 0.05) { 
+          centerUm = 0; midUm = Math.round(15 + bcDiff * 80); edgeUm = Math.round(30 + bcDiff * 150); farUm = Math.round(60 + bcDiff * 200);
+          flGradient = 'radial-gradient(circle, #022c22 10%, #4ade80 50%, #166534 85%, #4ade80 100%)';
+          fitText = '中央接觸 (Flat Fit)'; fitColor = 'text-red-400';
+        } else { 
+          centerUm = 15; midUm = 15; edgeUm = 20; farUm = 45;
+          flGradient = 'radial-gradient(circle, #22c55e 30%, #166534 75%, #4ade80 100%)';
+          fitText = '理想配適 (Alignment)'; fitColor = 'text-emerald-400';
+        }
+
+        document.getElementById('rgp-fl-pattern-bg').style.background = flGradient;
+        document.getElementById('rgp-fl-center-text').innerText = centerUm + ' μm';
+        document.getElementById('rgp-fl-mid-text').innerText = '2mm: ' + midUm;
+        document.getElementById('rgp-fl-edge-text').innerText = '4mm: ' + edgeUm;
+        document.getElementById('rgp-fl-far-text').innerText = '8mm: ' + farUm;
+        const statusEl = document.getElementById('rgp-fl-status-text');
+        statusEl.innerText = fitText;
+        statusEl.className = `text-xl font-black ${fitColor} print:text-slate-800 mb-4`;
+      };
+
+      if (avgK > 0) {
+        if (!document.getElementById('rgp-fl-pattern-bg')) {
+          visualBox.innerHTML = `
+            <div class="w-full bg-slate-900 print:bg-slate-100 p-6 print:p-2 rounded-xl border flex flex-col items-center shadow-xl">
+              <p class="text-slate-300 print:text-slate-700 font-bold text-xs mb-2 uppercase">🧪 球面螢光染色與周邊(PC)積水預測</p>
+              <p id="rgp-fl-status-text"></p>
+              
+              <div class="relative w-64 h-64 print:w-40 print:h-40 rounded-full border-4 border-slate-800 print:border-slate-300 overflow-hidden shadow-[0_0_40px_rgba(34,197,94,0.15)] print:shadow-none flex items-center justify-center">
+                <div id="rgp-fl-pattern-bg" class="absolute inset-0 opacity-85 print:opacity-100 transition-colors duration-75"></div>
+                <div class="absolute w-full h-px bg-white/30 print:bg-black/30"></div><div class="absolute h-full w-px bg-white/30 print:bg-black/30"></div>
+                
+                <div class="absolute flex flex-col items-center justify-center z-10">
+                  <div class="w-1.5 h-1.5 bg-white print:bg-black rounded-full shadow-[0_0_5px_white]"></div>
+                  <span id="rgp-fl-center-text" class="text-[10px] font-black text-white print:text-black bg-black/60 print:bg-white/80 px-1.5 py-0.5 rounded mt-1"></span>
+                </div>
+                <div class="absolute w-16 h-16 print:w-10 print:h-10 rounded-full border border-white/40 print:border-black/30 border-dashed flex items-start justify-center pt-1"><span id="rgp-fl-mid-text" class="text-[8px] font-bold text-white print:text-black bg-black/50 print:bg-white/80 px-1 rounded"></span></div>
+                <div class="absolute w-36 h-36 print:w-20 print:h-20 rounded-full border border-white/40 print:border-black/30 border-dashed flex items-end justify-center pb-1"><span id="rgp-fl-edge-text" class="text-[8px] font-bold text-white print:text-black bg-black/50 print:bg-white/80 px-1 rounded"></span></div>
+                <div class="absolute w-56 h-56 print:w-32 print:h-32 rounded-full border border-white/40 print:border-black/30 border-dashed flex items-center justify-end pr-1">
+                  <span id="rgp-fl-far-text" class="text-[8px] font-bold text-white print:text-black bg-black/50 print:bg-white/80 px-1 rounded -rotate-90 origin-right translate-x-2"></span>
+                </div>
+              </div>
+              
+              <div class="w-full mt-6 bg-slate-800 p-4 rounded-lg no-print">
+                <div class="flex justify-between text-xs text-slate-300 font-bold mb-2"><span>緊 (Steep)</span><span class="text-cyan-400 text-base" id="dynamic-bc-val">BC: ${finalBcCalculated.toFixed(2)}</span><span>鬆 (Flat)</span></div>
+                <input type="range" id="rgp-sim-slider" min="${avgK - 0.3}" max="${avgK + 0.3}" step="0.05" value="${finalBcCalculated}" class="w-full mb-3 accent-cyan-500" oninput="
+                  document.getElementById('dynamic-bc-val').innerText = 'BC: ' + parseFloat(this.value).toFixed(2);
+                  window.updateRgpVisuals(parseFloat(this.value));
+                ">
+                <button onclick="document.getElementById('rgp-actual-bc').value = document.getElementById('rgp-sim-slider').value; calcRGP();" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 rounded">✅ 將此 BC 帶入處方並重算</button>
+              </div>
+            </div>
+          `;
+        }
+        window.updateRgpVisuals(finalBcCalculated); 
+      } else {
+        visualBox.innerHTML = '';
+      }
+
+      sessionData.rgp[eye].res = { power: finalPowerRounded, bc: strBc, dia: strDia, notes, visualHtml: visualBox.innerHTML };
     }
 
     function calcToricStep2() {
@@ -955,21 +1101,107 @@ document.getElementById('res-scl-sph').innerHTML = `${strSph} <span class="text-
       }
     }
 
-    function calcToric() {
+   function calcToric() {
       const eye = getSelectedEye(); const sph = parseFloat(document.getElementById('t-sph').value) || 0;
       const cyl = parseFloat(document.getElementById('t-cyl').value) || 0; const vd = parseFloat(document.getElementById('t-vd').value) || 12;
       const k1 = parseFloat(document.getElementById('t-k1').value) || 0; const k2 = parseFloat(document.getElementById('t-k2').value) || 0;
       const cs = parseFloat(document.getElementById('t-cs').value) || 0; const notes = document.getElementById('toric-notes').value || '';
 
+      const toricOffsetSlider = document.getElementById('toric-sim-slider');
+      const offset = toricOffsetSlider ? parseFloat(toricOffsetSlider.value) : 0;
+
       const vertex_1 = round025(calcVertex(sph, vd)); const vertex_2 = round025(calcVertex(sph + cyl, vd));
-      const bc1_mm = k1 ? (337.5 / (k1 - 0.25)).toFixed(2) : '0.00'; const bc2_mm = k2 ? (337.5 / (k2 - 1.00)).toFixed(2) : '0.00';
+      
+      const bc1_mm = k1 ? (337.5 / (k1 - 0.25) + offset).toFixed(2) : '0.00'; 
+      const bc2_mm = k2 ? (337.5 / (k2 - 1.00) + offset).toFixed(2) : '0.00';
+      
       const p1 = formatD(vertex_1 - (-0.25)); const p2 = formatD(vertex_2 - (-1.00)); const finalDia = cs ? (cs - 2.0).toFixed(1) : '9.8';
 
       document.getElementById('res-t-bc1').innerText = bc1_mm; document.getElementById('res-t-p1').innerText = p1;
       document.getElementById('res-t-bc2').innerText = bc2_mm; document.getElementById('res-t-p2').innerText = p2;
       document.getElementById('res-t-dia').innerText = finalDia; 
       document.getElementById('toric-result').classList.remove('hidden');
-      sessionData.toric[eye].res = { bc1: bc1_mm, p1, bc2: bc2_mm, p2, dia: finalDia, notes };
+
+      // --- Toric 視覺圖與正宗「啞鈴狀 (Hourglass)」渲染邏輯 ---
+      let visualBox = document.getElementById('toric-visual-container');
+      if (!visualBox) {
+        document.getElementById('toric-result').insertAdjacentHTML('beforeend', `<div id="toric-visual-container" class="mt-6 border-t-2 border-slate-200 pt-6 print:pt-2"></div>`);
+        visualBox = document.getElementById('toric-visual-container');
+      }
+
+      window.updateToricVisuals = function(currentOffset) {
+        let centerUm=0, midUm=0, edgeUm=0, farUm=0, flGradient='', fitText='', fitColor='';
+        if (currentOffset < -0.05) { 
+          centerUm = Math.round(30 + Math.abs(currentOffset * 150)); midUm = 15; edgeUm = 5; farUm = 65;
+          // 垂直啞鈴狀 (漏斗): 利用交疊漸層創造中間窄、上下寬的積水感
+          flGradient = 'radial-gradient(ellipse 25% 85% at center, #4ade80 20%, transparent 60%), radial-gradient(circle, #022c22 30%, #166534 70%, #4ade80 100%)';
+          fitText = '全軸偏緊 (Steep Fit)'; fitColor = 'text-blue-400';
+        } else if (currentOffset > 0.05) { 
+          centerUm = 0; midUm = Math.round(15 + currentOffset * 80); edgeUm = Math.round(30 + currentOffset * 150); farUm = Math.round(60 + currentOffset * 200);
+          // 橫向啞鈴狀: 中央接觸，兩側橫向積水
+          flGradient = 'radial-gradient(ellipse 85% 25% at center, #022c22 20%, transparent 60%), radial-gradient(circle, #22c55e 30%, #166534 70%, #4ade80 100%)';
+          fitText = '全軸偏平 (Flat Fit)'; fitColor = 'text-red-400';
+        } else { 
+          centerUm = 15; midUm = 15; edgeUm = 20; farUm = 45;
+          // 理想雙軸: 柔和的十字對齊感
+          flGradient = 'radial-gradient(ellipse 45% 85% at center, #22c55e 30%, transparent 70%), radial-gradient(ellipse 85% 45% at center, #22c55e 30%, transparent 70%), radial-gradient(circle, #166534 40%, #064e3b 70%, #4ade80 100%)';
+          fitText = '雙軸理想配適 (Alignment)'; fitColor = 'text-emerald-400';
+        }
+        
+        document.getElementById('t-fl-pattern-bg').style.background = flGradient;
+        document.getElementById('t-fl-center-text').innerText = centerUm + ' μm';
+        document.getElementById('t-fl-mid-text').innerText = '2mm: ' + midUm;
+        document.getElementById('t-fl-edge-text').innerText = '4mm: ' + edgeUm;
+        document.getElementById('t-fl-far-text').innerText = '8mm: ' + farUm;
+        const statusEl = document.getElementById('t-fl-status-text');
+        statusEl.innerText = fitText;
+        statusEl.className = `text-xl font-black ${fitColor} print:text-slate-800 mb-4`;
+      };
+
+      if (k1 > 0 && k2 > 0) {
+        if(!document.getElementById('t-fl-pattern-bg')) {
+          visualBox.innerHTML = `
+            <div class="w-full bg-slate-900 print:bg-slate-100 p-6 print:p-2 rounded-xl border flex flex-col items-center shadow-xl">
+              <p class="text-slate-300 print:text-slate-700 font-bold text-xs mb-2 uppercase">🧪 雙軸散光(Toric) 啞鈴狀動態預測</p>
+              <p id="t-fl-status-text"></p>
+              
+              <div class="relative w-64 h-64 print:w-40 print:h-40 rounded-full border-4 border-slate-800 print:border-slate-300 overflow-hidden shadow-[0_0_40px_rgba(34,197,94,0.15)] print:shadow-none flex items-center justify-center">
+                <div id="t-fl-pattern-bg" class="absolute inset-0 opacity-85 print:opacity-100 transition-colors duration-75"></div>
+                <div class="absolute w-full h-px border-t-2 border-dashed border-white/40 print:border-black/30"></div>
+                <div class="absolute h-full w-px border-l-2 border-dashed border-white/40 print:border-black/30"></div>
+                
+                <div class="absolute flex flex-col items-center justify-center z-10">
+                  <div class="w-1.5 h-1.5 bg-white print:bg-black rounded-full shadow-[0_0_5px_white]"></div>
+                  <span id="t-fl-center-text" class="text-[10px] font-black text-white print:text-black bg-black/60 print:bg-white/80 px-1.5 py-0.5 rounded mt-1"></span>
+                </div>
+                
+                <div class="absolute w-12 h-20 print:w-8 print:h-12 rounded-full border border-white/40 print:border-black/30 border-dashed flex items-start justify-center pt-1"><span id="t-fl-mid-text" class="text-[8px] font-bold text-white print:text-black bg-black/50 print:bg-white/80 px-1 rounded"></span></div>
+                
+                <div class="absolute w-28 h-40 print:w-16 print:h-24 rounded-full border border-white/40 print:border-black/30 border-dashed flex items-end justify-center pb-1"><span id="t-fl-edge-text" class="text-[8px] font-bold text-white print:text-black bg-black/50 print:bg-white/80 px-1 rounded"></span></div>
+                
+                <div class="absolute w-48 h-56 print:w-28 print:h-32 rounded-full border border-white/40 print:border-black/30 border-dashed flex items-center justify-end pr-1">
+                  <span id="t-fl-far-text" class="text-[8px] font-bold text-white print:text-black bg-black/50 print:bg-white/80 px-1 rounded -rotate-90 origin-right translate-x-3"></span>
+                </div>
+              </div>
+              
+              <div class="w-full mt-6 bg-slate-800 p-4 rounded-lg no-print">
+                <div class="flex justify-between text-xs text-slate-300 font-bold mb-2"><span>全軸偏緊 (Steep)</span><span class="text-cyan-400 text-base" id="toric-dynamic-val">微調偏移量: ${offset > 0 ? '+'+offset.toFixed(2) : offset.toFixed(2)} mm</span><span>全軸偏平 (Flat)</span></div>
+                <input type="range" id="toric-sim-slider" min="-0.20" max="0.20" step="0.05" value="${offset}" class="w-full mb-3 accent-cyan-500" oninput="
+                  const v = parseFloat(this.value);
+                  document.getElementById('toric-dynamic-val').innerText = '微調偏移量: ' + (v > 0 ? '+'+v.toFixed(2) : v.toFixed(2)) + ' mm';
+                  window.updateToricVisuals(v);
+                ">
+                <button onclick="calcToric()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 rounded">✅ 將此微調同時套用至 FK / SK 處方</button>
+              </div>
+            </div>
+          `;
+        }
+        window.updateToricVisuals(offset);
+      } else {
+        visualBox.innerHTML = '';
+      }
+
+      sessionData.toric[eye].res = { bc1: bc1_mm, p1, bc2: bc2_mm, p2, dia: finalDia, notes, visualHtml: visualBox.innerHTML };
     }
     // 控制側邊欄開關
     function toggleSidebar() {
