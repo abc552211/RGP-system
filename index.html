@@ -18,7 +18,9 @@
     #view-scl.bg-morandi-os, #view-rgp.bg-morandi-os, #view-toric.bg-morandi-os { background-color: #dae1e7 !important; border-color: #94a3b8; }
     
     #print-modal-backdrop, #optometrist-modal-backdrop { background-color: rgba(0,0,0,0.4); }
-
+    /* 隱藏預覽彈窗內的拉桿與操作按鈕 */
+    #modal-preview-body .no-print { display: none !important; }
+    
     @media print {
       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       body { background: white !important; color: black !important; }
@@ -166,7 +168,6 @@
                </div>
                <input type="range" id="scl-rotation-slider" min="-30" max="30" step="1" value="0" class="w-full mb-1 accent-white" oninput="
                   const v = parseInt(this.value);
-                  // v < 0 代表滑桿在左邊(L)，v > 0 代表滑桿在右邊(R)
                   document.getElementById('scl-rotation-val').innerText = '鏡片實際偏位: ' + (v < 0 ? '左偏 (L) ' + Math.abs(v) + '°' : (v > 0 ? '右偏 (R) ' + v + '°' : '無偏移 0°'));
                   calcSCL(true);
                ">
@@ -202,6 +203,7 @@
         </div>
       </div>
     </div>
+
 <div id="view-rgp" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border transition-colors duration-300">
       <div class="flex justify-between items-center mb-6 border-b border-slate-400 pb-3">
         <h2 class="text-lg font-bold text-slate-800">RGP 球面硬式試片驗配</h2>
@@ -313,19 +315,35 @@
           </select>
         </div>
         <div class="border-t border-dashed border-slate-200 pt-3">
-          <span class="text-xs font-bold text-slate-400 block mb-2">➕ 新增人員至雲端名冊 (需密碼)</span>
+          <span class="text-xs font-bold text-slate-400 block mb-2">➕ 新增人員與職章至雲端名冊 (需密碼)</span>
           <div class="space-y-2">
+            <input type="hidden" id="op-modal-edit-id" value="">
             <input type="text" id="op-modal-name" placeholder="驗光人員姓名" class="w-full border p-2 rounded-lg text-sm bg-slate-50 outline-none">
             <input type="text" id="op-modal-license" placeholder="證號 (選填) 例如: 師字第000000號" class="w-full border p-2 rounded-lg text-sm bg-slate-50 outline-none">
-            <button onclick="addNewOptometristToCloud()" class="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border text-xs font-bold rounded-lg transition-colors">加密上傳此人員</button>
+            
+            <div class="flex items-center gap-3 border p-2 rounded-lg bg-slate-50">
+              <div class="flex-1">
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">上傳專屬職章 (自動壓縮轉正方形)</label>
+                <input type="file" id="op-modal-stamp-input" accept="image/*" class="text-xs text-slate-500 w-full file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300 cursor-pointer" onchange="handleStampUpload()">
+              </div>
+              <div id="op-modal-stamp-preview-box" class="w-10 h-10 border border-dashed border-slate-300 rounded bg-white flex items-center justify-center overflow-hidden hidden">
+                <img id="op-modal-stamp-img" src="" class="max-w-full max-h-full object-contain mix-blend-multiply">
+              </div>
+            </div>
+
+            <button id="op-submit-btn" onclick="submitOptometristToCloud()" class="w-full py-1.5 bg-slate-600 hover:bg-slate-700 text-white border text-xs font-bold rounded-lg transition-colors">加密上傳此人員與職章</button>
+            <button id="op-cancel-edit-btn" onclick="clearOpModalInputs()" class="w-full py-1 bg-slate-100 hover:bg-slate-200 text-slate-500 text-[10px] font-bold rounded-lg transition-colors hidden">取消編輯 (切換回新增模式)</button>
           </div>
         </div>
       </div>
       <div class="flex justify-between items-center text-xs font-bold border-t pt-3">
-        <button onclick="deleteCloudOptometrist()" class="text-red-500 hover:text-red-700">❌ 刪除所選人員</button>
+        <div class="flex gap-2">
+          <button onclick="deleteCloudOptometrist()" class="text-red-500 hover:text-red-700 bg-red-50 px-2 py-1.5 rounded-lg">❌ 刪除</button>
+          <button onclick="loadOptometristForEdit()" class="text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1.5 rounded-lg">✏️ 載入編輯</button>
+        </div>
         <div class="flex gap-2">
           <button onclick="closeOptometristModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">關閉</button>
-          <button onclick="saveOptometristSelection()" class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700">確認指派執勤</button>
+          <button onclick="saveOptometristSelection()" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 shadow-sm">確認指派執勤</button>
         </div>
       </div>
     </div>
@@ -383,9 +401,9 @@
         <b>2. 擔保範圍：</b>本單位僅對「特約合作單位所提供之專屬醫療器材（隱形眼鏡）」進行參數配置之數據擔保。各廠牌鏡片之幾何設計與材質均不相同，本數據不得跨品牌直接套用。<br>
         <b>3. 責任排除：</b>本報告明令禁止上述約定範圍外之任何用途。若持本數據於非特約授權場所、網路平台進行鏡片配製或購買，本單位概不負任何形式之法律與臨床醫療責任。配戴後請定期由眼科醫師進行追蹤檢查。
       </div>
-<div style="display: flex; align-items: center; gap: 8px; margin-right: 15px;">
+      <div style="display: flex; align-items: center; gap: 8px; margin-right: 15px;">
         <p style="margin: 0; font-size: 10px; font-weight: bold; color: #94a3b8; text-align: right; line-height: 1.3;">驗光人員<br>簽章處</p>
-        <div style="width: 70px; height: 70px; border: 1px dashed #94a3b8; border-radius: 6px;"></div>
+        <div id="real-print-stamp-box" style="width: 70px; height: 70px; border: 1px dashed #94a3b8; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px;"></div>
       </div>
   </div>
 
@@ -398,9 +416,38 @@
     let records = [];
     let activeCustomer = null;
     
-    // 雲端同步名冊與當前執勤人員
     let optometristList = []; 
     let currentOptometrist = { name: '', license: '' };
+    let tempUploadedStamp = null; 
+
+    function handleStampUpload() {
+      const fileInput = document.getElementById('op-modal-stamp-input');
+      const file = fileInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const size = 300; 
+          let width = img.width; let height = img.height;
+
+          if (width > height) { height = Math.round((height * size) / width); width = size; } 
+          else { width = Math.round((width * size) / height); height = size; }
+
+          canvas.width = size; canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          const offsetX = (size - width) / 2; const offsetY = (size - height) / 2;
+          ctx.drawImage(img, offsetX, offsetY, width, height);
+
+          tempUploadedStamp = canvas.toDataURL('image/png');
+          document.getElementById('op-modal-stamp-img').src = tempUploadedStamp;
+          document.getElementById('op-modal-stamp-preview-box').classList.remove('hidden');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
     
     let sessionData = {
       scl: { OD: { inputs: {}, res: null, photo: null }, OS: { inputs: {}, res: null, photo: null } },
@@ -408,23 +455,19 @@
       toric: { OD: { inputs: {}, res: null, photo: null }, OS: { inputs: {}, res: null, photo: null } }
     };
 
-    // 擴充初始化：同時抓取客戶與雲端驗光師名冊
     async function loadCustomers() {
       try {
         const { data } = await supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
         if(data) { customers = data; renderCustomers(); }
         
-        // 抓取雲端驗光師名冊
         await fetchCloudOptometrists();
         
-        // 從本機讀取上次在這個設備指派誰執勤
         const cacheOp = localStorage.getItem('active_optometrist');
         if(cacheOp) { currentOptometrist = JSON.parse(cacheOp); updateOptometristUI(); }
       } catch(e) {}
     }
     window.onload = loadCustomers;
 
-    // 從 Supabase 抓取最新名冊
     async function fetchCloudOptometrists() {
       try {
         const { data, error } = await supabaseClient.from('optometrists').select('*').order('created_at', { ascending: true });
@@ -439,8 +482,7 @@
 
     function openOptometristModal() {
       renderOptometristDropdown();
-      document.getElementById('op-modal-name').value = '';
-      document.getElementById('op-modal-license').value = '';
+      clearOpModalInputs();
       document.getElementById('optometrist-modal-backdrop').classList.remove('hidden');
     }
     function closeOptometristModal() { document.getElementById('optometrist-modal-backdrop').classList.add('hidden'); }
@@ -457,34 +499,82 @@
       });
     }
 
-    function handleOpDropdownChange() {
+    function loadOptometristForEdit() {
+      const select = document.getElementById('op-modal-select');
+      const index = select.value;
+      if(index === "") return alert("請先選擇要編輯的人員");
+      const op = optometristList[index];
+      
+      document.getElementById('op-modal-edit-id').value = op.id;
+      document.getElementById('op-modal-name').value = op.name;
+      document.getElementById('op-modal-license').value = op.license || '';
+      
+      if(op.stamp) {
+        document.getElementById('op-modal-stamp-img').src = op.stamp;
+        document.getElementById('op-modal-stamp-preview-box').classList.remove('hidden');
+        tempUploadedStamp = op.stamp;
+      } else {
+        document.getElementById('op-modal-stamp-img').src = '';
+        document.getElementById('op-modal-stamp-preview-box').classList.add('hidden');
+        tempUploadedStamp = null;
+      }
+      
+      document.getElementById('op-submit-btn').innerText = "💾 儲存修改內容 (需密碼)";
+      document.getElementById('op-submit-btn').classList.replace('bg-slate-600', 'bg-blue-600');
+      document.getElementById('op-submit-btn').classList.replace('hover:bg-slate-700', 'hover:bg-blue-700');
+      document.getElementById('op-cancel-edit-btn').classList.remove('hidden');
+    }
+
+    function clearOpModalInputs() {
+      document.getElementById('op-modal-edit-id').value = '';
       document.getElementById('op-modal-name').value = '';
       document.getElementById('op-modal-license').value = '';
+      document.getElementById('op-modal-stamp-input').value = '';
+      document.getElementById('op-modal-stamp-img').src = '';
+      document.getElementById('op-modal-stamp-preview-box').classList.add('hidden');
+      tempUploadedStamp = null;
+      
+      document.getElementById('op-submit-btn').innerText = "加密上傳此人員與職章";
+      document.getElementById('op-submit-btn').classList.replace('bg-blue-600', 'bg-slate-600');
+      document.getElementById('op-submit-btn').classList.replace('hover:bg-blue-700', 'hover:bg-slate-700');
+      document.getElementById('op-cancel-edit-btn').classList.add('hidden');
     }
 
-    // 新增雲端人員 (需密碼保護)
-    async function addNewOptometristToCloud() {
+    async function submitOptometristToCloud() {
       const name = document.getElementById('op-modal-name').value.trim();
       const license = document.getElementById('op-modal-license').value.trim();
-      if(!name) return alert("請輸入驗光人員姓名！");
+      const editId = document.getElementById('op-modal-edit-id').value;
       
-      const pwd = prompt("⚙️ 請輸入管理授權密碼以執行上傳：");
-      if(pwd !== "108114") return alert("❌ 密碼錯誤，拒絕上傳資料！");
+      if(!name) return alert("請輸入驗光人員姓名！");
+
+      const pwd = prompt("⚙️ 請輸入管理授權密碼以執行：");
+      if(pwd !== "108114") return alert("❌ 密碼錯誤，拒絕執行！");
 
       try {
-        const { data, error } = await supabaseClient.from('optometrists').insert([{ name, license }]).select();
-        if(error) return alert("上傳失敗：" + error.message);
+        const payload = { name, license };
+        if (tempUploadedStamp) payload.stamp = tempUploadedStamp; 
+
+        if (editId) {
+          const { error } = await supabaseClient.from('optometrists').update(payload).eq('id', editId);
+          if(error) throw error;
+          alert("✅ 人員資料已成功更新！");
+        } else {
+          const { error } = await supabaseClient.from('optometrists').insert([payload]);
+          if(error) throw error;
+          alert("✅ 人員已成功新增至雲端！");
+        }
         
-        alert("✅ 人員已同步至雲端資料庫！");
+        clearOpModalInputs();
         await fetchCloudOptometrists();
         renderOptometristDropdown();
-        document.getElementById('op-modal-select').value = optometristList.findIndex(op => op.name === name && op.license === license);
-        document.getElementById('op-modal-name').value = '';
-        document.getElementById('op-modal-license').value = '';
-      } catch(e) { alert("系統出錯。"); }
+        
+        // 嘗試自動選擇剛剛編輯/新增的人
+        const newIndex = optometristList.findIndex(op => op.name === name && op.license === license);
+        if (newIndex >= 0) document.getElementById('op-modal-select').value = newIndex;
+        
+      } catch(e) { alert("系統出錯：" + e.message); }
     }
 
-    // 刪除雲端人員 (需密碼保護)
     async function deleteCloudOptometrist() {
       const select = document.getElementById('op-modal-select');
       const index = select.value;
@@ -505,6 +595,7 @@
           currentOptometrist = { name: '', license: '' };
           localStorage.removeItem('active_optometrist');
         }
+        clearOpModalInputs();
         await fetchCloudOptometrists();
         renderOptometristDropdown();
       } catch(e) {}
@@ -523,7 +614,6 @@
       document.getElementById('sidebar-optometrist-display').innerText = displayStr || '未指定驗光人員';
     }
 
-    // --- 莫蘭迪背景變色核心 ---
     function updateWorkspaceColor() {
       const eye = getSelectedEye();
       const panels = ['view-scl', 'view-rgp', 'view-toric'];
@@ -670,18 +760,15 @@
       else { eyeSelector.classList.remove('hidden'); updateWorkspaceColor(); restoreInputsAndResultsFromSession(); }
     }
     
-// 1. 取得當前選擇的眼別 (OD 或 OS)
-function getSelectedEye() {
-  const selected = document.querySelector('input[name="eye"]:checked');
-  return selected ? selected.value : 'OD'; // 預設返回右眼
-}
+    function getSelectedEye() {
+      const selected = document.querySelector('input[name="eye"]:checked');
+      return selected ? selected.value : 'OD'; 
+    }
 
-// 2. 清空指定 Tab 的輸入框與結果 (提供空函數或基礎邏輯以避免報錯)
-function clearInputsAndResultsOfTab(type) {
-  // 若有需要，可以後續再將清空各 input 的邏輯寫在這裡
-}
+    function clearInputsAndResultsOfTab(type) {}
 
     function setActiveCustomer(id, name) { activeCustomer = { id, name }; document.getElementById('active-customer-name').innerText = name; }
+    
     async function addCustomer() {
       const name = document.getElementById('crm-name').value; const phone = document.getElementById('crm-phone').value; const dob = document.getElementById('crm-dob').value;
       if (!name) return alert("請填寫姓名");
@@ -711,6 +798,7 @@ function clearInputsAndResultsOfTab(type) {
         const { data } = await supabaseClient.from('fitting_records').select('*').eq('customer_id', id).order('created_at', { ascending: false });
         if(data) records = data;
       } catch(e){}
+      
       const userRecords = records.filter(r => r.customer_id === id);
       const container = document.getElementById('history-records');
       if(userRecords.length === 0) { container.innerHTML = "<p class='text-slate-400 italic text-xs'>尚無驗配紀錄。</p>"; return; }
@@ -718,22 +806,30 @@ function clearInputsAndResultsOfTab(type) {
       container.innerHTML = userRecords.map(r => {
         const dateStr = new Date(r.created_at).toLocaleDateString('zh-TW');
         let summaryOD = '-', summaryOS = '-';
-        if (r.type === 'scl') {
-          if(r.parameters.OD) {
-            let precise = r.parameters.OD.preciseSph ? `(${r.parameters.OD.preciseSph})` : '';
-            let ax = r.parameters.OD.axis ? ` Ax${r.parameters.OD.axis}` : '';
-            summaryOD = `${r.parameters.OD.sph}${precise} / ${r.parameters.OD.cyl}${ax}`;
+        
+        // 👉 加入安全防護：如果 r.parameters 為空，才不會當機
+        if (r.parameters) {
+          if (r.type === 'scl') {
+            if(r.parameters.OD) {
+              let precise = r.parameters.OD.preciseSph ? `(${r.parameters.OD.preciseSph})` : '';
+              let ax = r.parameters.OD.axis ? ` Ax${r.parameters.OD.axis}` : '';
+              summaryOD = `${r.parameters.OD.sph}${precise} / ${r.parameters.OD.cyl}${ax}`;
+            }
+            if(r.parameters.OS) {
+              let precise = r.parameters.OS.preciseSph ? `(${r.parameters.OS.preciseSph})` : '';
+              let ax = r.parameters.OS.axis ? ` Ax${r.parameters.OS.axis}` : '';
+              summaryOS = `${r.parameters.OS.sph}${precise} / ${r.parameters.OS.cyl}${ax}`;
+            }
           }
-          if(r.parameters.OS) {
-            let precise = r.parameters.OS.preciseSph ? `(${r.parameters.OS.preciseSph})` : '';
-            let ax = r.parameters.OS.axis ? ` Ax${r.parameters.OS.axis}` : '';
-            summaryOS = `${r.parameters.OS.sph}${precise} / ${r.parameters.OS.cyl}${ax}`;
+          if (r.type === 'rgp') {
+            if (r.parameters.OD) summaryOD = `${r.parameters.OD.power}D`;
+            if (r.parameters.OS) summaryOS = `${r.parameters.OS.power}D`;
+          }
+          if (r.type === 'toric') {
+            if (r.parameters.OD) summaryOD = `F:${r.parameters.OD.p1}D`;
+            if (r.parameters.OS) summaryOS = `F:${r.parameters.OS.p1}D`;
           }
         }
-        if (r.type === 'rgp' && r.parameters.OD) summaryOD = `${r.parameters.OD.power}D`;
-        if (r.type === 'rgp' && r.parameters.OS) summaryOS = `${r.parameters.OS.power}D`;
-        if (r.type === 'toric' && r.parameters.OD) summaryOD = `F:${r.parameters.OD.p1}D`;
-        if (r.type === 'toric' && r.parameters.OS) summaryOS = `F:${r.parameters.OS.p1}D`;
 
         return `
         <div class="p-3 bg-white border rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-2 shadow-sm text-xs">
@@ -748,7 +844,7 @@ function clearInputsAndResultsOfTab(type) {
             </div>
           </div>
           <div class="flex items-center gap-2 self-end md:self-auto">
-            <button onclick='openPrintPreviewModal(${JSON.stringify(r)})' class="bg-slate-100 hover:bg-slate-200 border text-slate-700 px-2.5 py-1 font-bold rounded-md">調閱列印</button>
+            <button onclick="openPrintPreviewModal('${r.id}')" class="bg-slate-100 hover:bg-slate-200 border text-slate-700 px-2.5 py-1 font-bold rounded-md">調閱列印</button>
             <button onclick="deleteRecord('${r.id}', '${id}')" class="text-red-500 hover:text-red-700 font-bold px-1 text-xs">刪除</button>
           </div>
         </div>`;
@@ -782,7 +878,10 @@ function clearInputsAndResultsOfTab(type) {
       } catch(e) {}
     }
 
-    function openPrintPreviewModal(r) {
+    function openPrintPreviewModal(recordId) {
+      const r = records.find(rec => rec.id === recordId);
+      if (!r) return;
+      
       const customer = customers.find(c => c.id === r.customer_id);
       const name = customer ? customer.name : '未知'; const phone = customer ? (customer.phone || '無') : '無';
       const dateStr = new Date(r.created_at).toLocaleDateString('zh-TW'); const typeStr = r.type.toUpperCase();
@@ -802,7 +901,18 @@ function clearInputsAndResultsOfTab(type) {
       if(pOS) { document.getElementById('print-os-img').src = pOS; document.getElementById('print-os-image-box').style.display = 'block'; } 
       else { document.getElementById('print-os-image-box').style.display = 'none'; }
 
-      // 預覽彈窗介面同步升級
+      const matchedOp = optometristList.find(op => op.name === r.optometrist_name && op.license === r.optometrist_license);
+      const stampBase64 = matchedOp && matchedOp.stamp ? matchedOp.stamp : null;
+
+      const realStampBox = document.getElementById('real-print-stamp-box');
+      if (stampBase64) {
+        realStampBox.innerHTML = `<img src="${stampBase64}" style="max-width: 100%; max-height: 100%; object-fit: contain; mix-blend-mode: multiply;">`;
+        realStampBox.style.border = 'none';
+      } else {
+        realStampBox.innerHTML = '';
+        realStampBox.style.border = '1px dashed #94a3b8';
+      }
+
       document.getElementById('modal-preview-body').innerHTML = `
         <div class="border p-4 rounded-xl bg-slate-50 text-xs text-slate-700 space-y-4">
           <div class="flex justify-between font-bold border-b pb-2 text-slate-500">
@@ -818,7 +928,8 @@ function clearInputsAndResultsOfTab(type) {
               ${pOS ? `<img src="${pOS}" class="mt-2 w-full h-48 object-contain border rounded">` : '<p class="text-[10px] text-slate-400 italic mt-2">無鏡片照片</p>'}
             </div>
           </div>
-          <div class="max-w-[75%] space-y-1 text-justify">
+          <div class="flex items-end justify-between border-t pt-3">
+            <div class="max-w-[75%] space-y-1 text-justify">
               <p class="font-bold text-slate-600 text-[11px] mb-1">⚠️ 臨床免責與使用限制聲明：</p>
               <p><b>1. 文書性質：</b>本單僅供特約合作單位內部參考，非屬法規定義之正式驗光處方或醫療報告書。</p>
               <p><b>2. 擔保範圍：</b>本單位僅對「特約合作商提供之專屬器材」進行數據擔保，參數嚴禁跨品牌套用。</p>
@@ -826,7 +937,9 @@ function clearInputsAndResultsOfTab(type) {
             </div>
             <div class="flex items-center gap-2">
               <p class="font-bold text-slate-400 text-[10px] text-right leading-tight">驗光人員<br>簽章處</p>
-              <div class="w-16 h-16 border border-dashed border-slate-300 rounded-lg"></div>
+              <div class="w-16 h-16 ${stampBase64 ? '' : 'border border-dashed border-slate-300'} rounded-lg flex items-center justify-center overflow-hidden bg-white p-0.5">
+                ${stampBase64 ? `<img src="${stampBase64}" class="w-full h-full object-contain mix-blend-multiply">` : ''}
+              </div>
             </div>
           </div>
         </div>`;
@@ -851,7 +964,7 @@ function clearInputsAndResultsOfTab(type) {
       }
       if(eyeData.notes) html += `<div style="margin-top:4px; padding-top:2px; border-top:1px dashed #cbd5e1; font-size:10px; color:#64748b;"><b>臨床備註：</b> ${eyeData.notes}</div>`;
       if(eyeData.visualHtml) { html += `<div style="margin-top:8px; display:flex; justify-content:center;">${eyeData.visualHtml}</div>`; }
-    html += '</div>'; return html;
+      html += '</div>'; return html;
     }
 
     function round025(val) { return Math.round(val * 4) / 4; }
@@ -863,7 +976,6 @@ function clearInputsAndResultsOfTab(type) {
       if(axis === 0) return;
       const rot = parseInt(document.getElementById('scl-rotation-slider').value) || 0;
       
-      // 正宗 LARS 原理：左(L/負數)加，右(R/正數)減
       let newAxis = (axis - rot) % 180;
       if (newAxis <= 0) newAxis += 180;
       
@@ -915,14 +1027,13 @@ function clearInputsAndResultsOfTab(type) {
       document.getElementById('res-scl-bc').innerText = bc;
       document.getElementById('res-scl-add').innerText = add || '無';
 
-      // --- 雙圖層視覺圖邏輯 ---
       const sclMarks = document.getElementById('scl-marks') ? document.getElementById('scl-marks').value : 'none';
       const visualBox = document.getElementById('res-scl-visual-container');
       const controlPanel = document.getElementById('scl-lars-control-panel');
       
-      const targetCss = axis * -1; // 目標固定軸
-      const lensRotCss = lensRot * -1; // 物理旋轉：左偏(負值)需對應順時針(正角度)旋轉
-      const newAxisCss = newOrderedAxis * -1; // 青線刻在鏡片上的位置
+      const targetCss = axis * -1; 
+      const lensRotCss = lensRot * -1; 
+      const newAxisCss = newOrderedAxis * -1; 
 
       let visualHtmlStr = '';
       if (cyl !== 0) {
@@ -931,19 +1042,16 @@ function clearInputsAndResultsOfTab(type) {
             <p class="text-slate-300 print:text-slate-700 font-bold text-xs mb-4 uppercase">🎯 雙層物理旋轉模擬 (將青線對齊黃線)</p>
             
             <div class="relative w-64 h-64 print:w-40 print:h-40 rounded-full border-2 border-slate-700 print:border-slate-400 bg-slate-800 print:bg-white flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.5)] print:shadow-none">
-              
               <div class="absolute w-full h-px bg-slate-700/50 print:bg-slate-300"></div>
               <div class="absolute h-full w-px bg-slate-700/50 print:bg-slate-300"></div>
               
               <div class="absolute w-full h-0.5 border-t-2 border-dashed border-yellow-400 print:border-slate-600 shadow-[0_0_10px_rgba(250,204,21,0.5)] print:shadow-none z-10" style="transform: rotate(${targetCss}deg)"></div>
               
               <div class="absolute inset-2 rounded-full border border-cyan-500/30 bg-cyan-900/30 print:border-slate-300 print:bg-slate-50 transition-transform duration-75 flex items-center justify-center" style="transform: rotate(${lensRotCss}deg)">
-                
                 ${sclMarks === '6' ? `<div class="absolute bottom-2 w-2.5 h-7 bg-white print:bg-slate-900 shadow-[0_0_8px_white] rounded-full"></div>` : ''}
                 ${sclMarks === '39' ? `<div class="absolute left-2 w-7 h-2.5 bg-white print:bg-slate-900 shadow-[0_0_8px_white] rounded-full"></div><div class="absolute right-2 w-7 h-2.5 bg-white print:bg-slate-900 shadow-[0_0_8px_white] rounded-full"></div>` : ''}
                 
                 <div class="absolute w-full h-px border-t-2 border-dashed border-slate-400 opacity-60 print:border-slate-500" style="transform: rotate(${targetCss}deg)"></div>
-                
                 <div class="absolute w-full h-1.5 bg-cyan-400 print:bg-slate-800 shadow-[0_0_15px_#22d3ee] print:shadow-none" style="transform: rotate(${newAxisCss}deg)"></div>
               </div>
               
@@ -1012,7 +1120,6 @@ function clearInputsAndResultsOfTab(type) {
       document.getElementById('res-rgp-dia').innerText = strDia; 
       document.getElementById('rgp-result').classList.remove('hidden');
 
-      // --- 螢光染色與動態 BC 調整器 (8mm 升級版) ---
       const r1 = parseFloat(document.getElementById('rgp-r1').value) || 0;
       const r2 = parseFloat(document.getElementById('rgp-r2').value) || 0;
       const avgK = r1 && r2 ? (r1 + r2) / 2 : 0;
@@ -1042,10 +1149,10 @@ function clearInputsAndResultsOfTab(type) {
         }
 
         document.getElementById('rgp-fl-pattern-bg').style.background = flGradient;
-        document.getElementById('rgp-fl-center-text').innerText = centerUm + ' μm';
-        document.getElementById('rgp-fl-mid-text').innerText = '2mm: ' + midUm;
-        document.getElementById('rgp-fl-edge-text').innerText = '4mm: ' + edgeUm;
-        document.getElementById('rgp-fl-far-text').innerText = '8mm: ' + farUm;
+        document.getElementById('rgp-fl-center-text').innerText = '中心: ' + centerUm + ' μm';
+        document.getElementById('rgp-fl-mid-text').innerText = '2mm: ' + midUm + ' μm';
+        document.getElementById('rgp-fl-edge-text').innerText = '4mm: ' + edgeUm + ' μm';
+        document.getElementById('rgp-fl-far-text').innerText = '8mm: ' + farUm + ' μm';
         const statusEl = document.getElementById('rgp-fl-status-text');
         statusEl.innerText = fitText;
         statusEl.className = `text-xl font-black ${fitColor} print:text-slate-800 mb-4`;
@@ -1058,18 +1165,35 @@ function clearInputsAndResultsOfTab(type) {
               <p class="text-slate-300 print:text-slate-700 font-bold text-xs mb-2 uppercase">🧪 球面螢光染色與周邊(PC)積水預測</p>
               <p id="rgp-fl-status-text"></p>
               
-              <div class="relative w-64 h-64 print:w-40 print:h-40 rounded-full border-4 border-slate-800 print:border-slate-300 overflow-hidden shadow-[0_0_40px_rgba(34,197,94,0.15)] print:shadow-none flex items-center justify-center">
-                <div id="rgp-fl-pattern-bg" class="absolute inset-0 opacity-85 print:opacity-100 transition-colors duration-75"></div>
-                <div class="absolute w-full h-px bg-white/30 print:bg-black/30"></div><div class="absolute h-full w-px bg-white/30 print:bg-black/30"></div>
+              <div class="relative w-64 h-64 print:w-40 print:h-40 rounded-full border-4 border-slate-800 print:border-slate-300 shadow-[0_0_40px_rgba(34,197,94,0.15)] print:shadow-none flex items-center justify-center my-6">
+                <div id="rgp-fl-pattern-bg" class="absolute inset-0 rounded-full overflow-hidden opacity-85 print:opacity-100 transition-colors duration-75"></div>
+                <div class="absolute w-full h-px border-t border-dashed border-white/20 print:border-black/20 z-0"></div>
+                <div class="absolute h-full w-px border-l border-dashed border-white/20 print:border-black/20 z-0"></div>
                 
-                <div class="absolute flex flex-col items-center justify-center z-10">
-                  <div class="w-1.5 h-1.5 bg-white print:bg-black rounded-full shadow-[0_0_5px_white]"></div>
-                  <span id="rgp-fl-center-text" class="text-[10px] font-black text-white print:text-black bg-black/60 print:bg-white/80 px-1.5 py-0.5 rounded mt-1"></span>
+                <div class="absolute w-16 h-16 print:w-10 print:h-10 rounded-full border border-white/40 print:border-black/30 border-dashed z-0"></div>
+                <div class="absolute w-36 h-36 print:w-20 print:h-20 rounded-full border border-white/40 print:border-black/30 border-dashed z-0"></div>
+                <div class="absolute w-56 h-56 print:w-32 print:h-32 rounded-full border border-white/40 print:border-black/30 border-dashed z-0"></div>
+
+                <div class="absolute w-1.5 h-1.5 bg-white print:bg-black rounded-full shadow-[0_0_5px_white] z-10"></div>
+                
+                <div class="absolute flex flex-col items-center justify-end z-20" style="transform: translateY(-20px);">
+                  <span id="rgp-fl-center-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap mb-1 border border-slate-600 print:border-slate-300"></span>
+                  <div class="w-px h-4 bg-white/70 print:bg-slate-500"></div>
                 </div>
-                <div class="absolute w-16 h-16 print:w-10 print:h-10 rounded-full border border-white/40 print:border-black/30 border-dashed flex items-start justify-center pt-1"><span id="rgp-fl-mid-text" class="text-[8px] font-bold text-white print:text-black bg-black/50 print:bg-white/80 px-1 rounded"></span></div>
-                <div class="absolute w-36 h-36 print:w-20 print:h-20 rounded-full border border-white/40 print:border-black/30 border-dashed flex items-end justify-center pb-1"><span id="rgp-fl-edge-text" class="text-[8px] font-bold text-white print:text-black bg-black/50 print:bg-white/80 px-1 rounded"></span></div>
-                <div class="absolute w-56 h-56 print:w-32 print:h-32 rounded-full border border-white/40 print:border-black/30 border-dashed flex items-center justify-end pr-1">
-                  <span id="rgp-fl-far-text" class="text-[8px] font-bold text-white print:text-black bg-black/50 print:bg-white/80 px-1 rounded -rotate-90 origin-right translate-x-2"></span>
+                
+                <div class="absolute flex items-center justify-start z-20" style="transform: translateX(32px);">
+                  <div class="w-6 h-px bg-white/70 print:bg-slate-500"></div>
+                  <span id="rgp-fl-mid-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap ml-1 border border-slate-600 print:border-slate-300"></span>
+                </div>
+
+                <div class="absolute flex flex-col items-center justify-start z-20" style="transform: translateY(72px);">
+                  <div class="w-px h-6 bg-white/70 print:bg-slate-500"></div>
+                  <span id="rgp-fl-edge-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap mt-1 border border-slate-600 print:border-slate-300"></span>
+                </div>
+
+                <div class="absolute flex items-center justify-end z-20" style="transform: translateX(-112px);">
+                  <span id="rgp-fl-far-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap mr-1 border border-slate-600 print:border-slate-300"></span>
+                  <div class="w-6 h-px bg-white/70 print:bg-slate-500"></div>
                 </div>
               </div>
               
@@ -1101,7 +1225,7 @@ function clearInputsAndResultsOfTab(type) {
       }
     }
 
-   function calcToric() {
+    function calcToric() {
       const eye = getSelectedEye(); const sph = parseFloat(document.getElementById('t-sph').value) || 0;
       const cyl = parseFloat(document.getElementById('t-cyl').value) || 0; const vd = parseFloat(document.getElementById('t-vd').value) || 12;
       const k1 = parseFloat(document.getElementById('t-k1').value) || 0; const k2 = parseFloat(document.getElementById('t-k2').value) || 0;
@@ -1122,7 +1246,6 @@ function clearInputsAndResultsOfTab(type) {
       document.getElementById('res-t-dia').innerText = finalDia; 
       document.getElementById('toric-result').classList.remove('hidden');
 
-      // --- Toric 視覺圖與正宗「啞鈴狀 (Hourglass)」渲染邏輯 ---
       let visualBox = document.getElementById('toric-visual-container');
       if (!visualBox) {
         document.getElementById('toric-result').insertAdjacentHTML('beforeend', `<div id="toric-visual-container" class="mt-6 border-t-2 border-slate-200 pt-6 print:pt-2"></div>`);
@@ -1133,26 +1256,23 @@ function clearInputsAndResultsOfTab(type) {
         let centerUm=0, midUm=0, edgeUm=0, farUm=0, flGradient='', fitText='', fitColor='';
         if (currentOffset < -0.05) { 
           centerUm = Math.round(30 + Math.abs(currentOffset * 150)); midUm = 15; edgeUm = 5; farUm = 65;
-          // 垂直啞鈴狀 (漏斗): 利用交疊漸層創造中間窄、上下寬的積水感
           flGradient = 'radial-gradient(ellipse 25% 85% at center, #4ade80 20%, transparent 60%), radial-gradient(circle, #022c22 30%, #166534 70%, #4ade80 100%)';
           fitText = '全軸偏緊 (Steep Fit)'; fitColor = 'text-blue-400';
         } else if (currentOffset > 0.05) { 
           centerUm = 0; midUm = Math.round(15 + currentOffset * 80); edgeUm = Math.round(30 + currentOffset * 150); farUm = Math.round(60 + currentOffset * 200);
-          // 橫向啞鈴狀: 中央接觸，兩側橫向積水
           flGradient = 'radial-gradient(ellipse 85% 25% at center, #022c22 20%, transparent 60%), radial-gradient(circle, #22c55e 30%, #166534 70%, #4ade80 100%)';
           fitText = '全軸偏平 (Flat Fit)'; fitColor = 'text-red-400';
         } else { 
           centerUm = 15; midUm = 15; edgeUm = 20; farUm = 45;
-          // 理想雙軸: 柔和的十字對齊感
           flGradient = 'radial-gradient(ellipse 45% 85% at center, #22c55e 30%, transparent 70%), radial-gradient(ellipse 85% 45% at center, #22c55e 30%, transparent 70%), radial-gradient(circle, #166534 40%, #064e3b 70%, #4ade80 100%)';
           fitText = '雙軸理想配適 (Alignment)'; fitColor = 'text-emerald-400';
         }
         
         document.getElementById('t-fl-pattern-bg').style.background = flGradient;
-        document.getElementById('t-fl-center-text').innerText = centerUm + ' μm';
-        document.getElementById('t-fl-mid-text').innerText = '2mm: ' + midUm;
-        document.getElementById('t-fl-edge-text').innerText = '4mm: ' + edgeUm;
-        document.getElementById('t-fl-far-text').innerText = '8mm: ' + farUm;
+        document.getElementById('t-fl-center-text').innerText = '中心: ' + centerUm + ' μm';
+        document.getElementById('t-fl-mid-text').innerText = '2mm: ' + midUm + ' μm';
+        document.getElementById('t-fl-edge-text').innerText = '4mm: ' + edgeUm + ' μm';
+        document.getElementById('t-fl-far-text').innerText = '8mm: ' + farUm + ' μm';
         const statusEl = document.getElementById('t-fl-status-text');
         statusEl.innerText = fitText;
         statusEl.className = `text-xl font-black ${fitColor} print:text-slate-800 mb-4`;
@@ -1165,22 +1285,35 @@ function clearInputsAndResultsOfTab(type) {
               <p class="text-slate-300 print:text-slate-700 font-bold text-xs mb-2 uppercase">🧪 雙軸散光(Toric) 啞鈴狀動態預測</p>
               <p id="t-fl-status-text"></p>
               
-              <div class="relative w-64 h-64 print:w-40 print:h-40 rounded-full border-4 border-slate-800 print:border-slate-300 overflow-hidden shadow-[0_0_40px_rgba(34,197,94,0.15)] print:shadow-none flex items-center justify-center">
-                <div id="t-fl-pattern-bg" class="absolute inset-0 opacity-85 print:opacity-100 transition-colors duration-75"></div>
-                <div class="absolute w-full h-px border-t-2 border-dashed border-white/40 print:border-black/30"></div>
-                <div class="absolute h-full w-px border-l-2 border-dashed border-white/40 print:border-black/30"></div>
+              <div class="relative w-64 h-64 print:w-40 print:h-40 rounded-full border-4 border-slate-800 print:border-slate-300 shadow-[0_0_40px_rgba(34,197,94,0.15)] print:shadow-none flex items-center justify-center my-6">
+                <div id="t-fl-pattern-bg" class="absolute inset-0 rounded-full overflow-hidden opacity-85 print:opacity-100 transition-colors duration-75"></div>
+                <div class="absolute w-full h-px border-t border-dashed border-white/20 print:border-black/20 z-0"></div>
+                <div class="absolute h-full w-px border-l border-dashed border-white/20 print:border-black/20 z-0"></div>
                 
-                <div class="absolute flex flex-col items-center justify-center z-10">
-                  <div class="w-1.5 h-1.5 bg-white print:bg-black rounded-full shadow-[0_0_5px_white]"></div>
-                  <span id="t-fl-center-text" class="text-[10px] font-black text-white print:text-black bg-black/60 print:bg-white/80 px-1.5 py-0.5 rounded mt-1"></span>
+                <div class="absolute w-12 h-20 print:w-8 print:h-12 rounded-full border border-white/40 print:border-black/30 border-dashed z-0"></div>
+                <div class="absolute w-28 h-40 print:w-16 print:h-24 rounded-full border border-white/40 print:border-black/30 border-dashed z-0"></div>
+                <div class="absolute w-48 h-56 print:w-28 print:h-32 rounded-full border border-white/40 print:border-black/30 border-dashed z-0"></div>
+                
+                <div class="absolute w-1.5 h-1.5 bg-white print:bg-black rounded-full shadow-[0_0_5px_white] z-10"></div>
+                
+                <div class="absolute flex flex-col items-center justify-end z-20" style="transform: translateY(-20px);">
+                  <span id="t-fl-center-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap mb-1 border border-slate-600 print:border-slate-300"></span>
+                  <div class="w-px h-4 bg-white/70 print:bg-slate-500"></div>
                 </div>
                 
-                <div class="absolute w-12 h-20 print:w-8 print:h-12 rounded-full border border-white/40 print:border-black/30 border-dashed flex items-start justify-center pt-1"><span id="t-fl-mid-text" class="text-[8px] font-bold text-white print:text-black bg-black/50 print:bg-white/80 px-1 rounded"></span></div>
+                <div class="absolute flex items-center justify-start z-20" style="transform: translateX(24px);">
+                  <div class="w-6 h-px bg-white/70 print:bg-slate-500"></div>
+                  <span id="t-fl-mid-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap ml-1 border border-slate-600 print:border-slate-300"></span>
+                </div>
                 
-                <div class="absolute w-28 h-40 print:w-16 print:h-24 rounded-full border border-white/40 print:border-black/30 border-dashed flex items-end justify-center pb-1"><span id="t-fl-edge-text" class="text-[8px] font-bold text-white print:text-black bg-black/50 print:bg-white/80 px-1 rounded"></span></div>
+                <div class="absolute flex flex-col items-center justify-start z-20" style="transform: translateY(80px);">
+                  <div class="w-px h-6 bg-white/70 print:bg-slate-500"></div>
+                  <span id="t-fl-edge-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap mt-1 border border-slate-600 print:border-slate-300"></span>
+                </div>
                 
-                <div class="absolute w-48 h-56 print:w-28 print:h-32 rounded-full border border-white/40 print:border-black/30 border-dashed flex items-center justify-end pr-1">
-                  <span id="t-fl-far-text" class="text-[8px] font-bold text-white print:text-black bg-black/50 print:bg-white/80 px-1 rounded -rotate-90 origin-right translate-x-3"></span>
+                <div class="absolute flex items-center justify-end z-20" style="transform: translateX(-96px);">
+                  <span id="t-fl-far-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap mr-1 border border-slate-600 print:border-slate-300"></span>
+                  <div class="w-6 h-px bg-white/70 print:bg-slate-500"></div>
                 </div>
               </div>
               
@@ -1203,7 +1336,7 @@ function clearInputsAndResultsOfTab(type) {
 
       sessionData.toric[eye].res = { bc1: bc1_mm, p1, bc2: bc2_mm, p2, dia: finalDia, notes, visualHtml: visualBox.innerHTML };
     }
-    // 控制側邊欄開關
+
     function toggleSidebar() {
       const sidebar = document.getElementById('sidebar');
       const overlay = document.getElementById('sidebar-overlay');
@@ -1211,10 +1344,8 @@ function clearInputsAndResultsOfTab(type) {
       overlay.classList.toggle('hidden');
     }
 
-    // 切換分頁並自動關閉手機側邊欄
     function switchViewAndClose(view) {
-      switchView(view); // 執行你原本寫好的切換功能
-      // 如果是在手機模式下，點擊後自動收回選單
+      switchView(view); 
       if (!document.getElementById('sidebar').classList.contains('-translate-x-full') && window.innerWidth < 768) {
         toggleSidebar();
       }
