@@ -420,6 +420,250 @@
     let currentOptometrist = { name: '', license: '' };
     let tempUploadedStamp = null; 
 
+    // ==========================================
+    // 微米級光線追跡、FL、RC外圍弧 與 TOPO 繪圖引擎
+    // ==========================================
+    
+    // 計算角膜表面矢深 (Cornea Z) - 遵循驗光標準角度(0=右, 90=上)
+    function getCorneaZ(r, th, R1_mm, R2_mm, axisDeg) {
+        let th_c = axisDeg * Math.PI / 180;
+        let angle = th - th_c;
+        let Cc = (1/R1_mm)*Math.pow(Math.cos(angle), 2) + (1/R2_mm)*Math.pow(Math.sin(angle), 2);
+        return (r * r * 1000 / 2) * Cc; 
+    }
+
+    // 計算鏡片表面矢深 (Lens Z)，包含 RC 外圍放平模擬
+    function getLensZ(r, th, BC1_mm, BC2_mm, axisDeg) {
+        let th_l = axisDeg * Math.PI / 180;
+        let angle = th - th_l;
+        let Cl = (1/BC1_mm)*Math.pow(Math.cos(angle), 2) + (1/BC2_mm)*Math.pow(Math.sin(angle), 2);
+        
+        let oz_radius = 3.6; // 模擬 7.2mm 光學區 (OZ)
+        if (r <= oz_radius) {
+            return (r * r * 1000 / 2) * Cl;
+        } else {
+            let Z_oz = (oz_radius * oz_radius * 1000 / 2) * Cl;
+            // 外圍弧 RC 模擬：比基弧平坦約 1.2 mm
+            let Cl_p = (1/(BC1_mm+1.2))*Math.pow(Math.cos(angle), 2) + (1/(BC2_mm+1.2))*Math.pow(Math.sin(angle), 2);
+            let Z_extra = ((r*r - oz_radius*oz_radius) * 1000 / 2) * Cl_p;
+            return Z_oz + Z_extra; 
+        }
+    }
+
+    // 尋找最小淚液厚度以避免鏡片切入角膜 (頂點抬升量)
+    function computeTearProfileCore(rMax, R1, R2, cAxisDeg, BC1, BC2, lAxisDeg) {
+        let minClearance = 0;
+        for(let r=0; r<=rMax; r+=0.2) {
+            for(let th=0; th<2*Math.PI; th+=Math.PI/16) {
+                let zC = getCorneaZ(r, th, R1, R2, cAxisDeg);
+                let zL = getLensZ(r, th, BC1, BC2, lAxisDeg);
+                if (zC - zL < minClearance) minClearance = zC - zL;
+            }
+        }
+        return -minClearance; 
+    }
+
+    function renderFLVisuals(canvasFlId, canvasCrossId, R1, R2, BC1, BC2, rMax, viewAngleDeg, cAxisDeg, lAxisDeg) {
+        const flCanvas = document.getElementById(canvasFlId);
+        const crossCanvas = document.getElementById(canvasCrossId);
+        if (!flCanvas || !crossCanvas) return { center:0, mid:0, edge:0, far:0 };
+
+        const apexC = computeTearProfileCore(rMax, R1, R2, cAxisDeg, BC1, BC2, lAxisDeg);
+        const viewThRad = viewAngleDeg * Math.PI / 180;
+
+        // 1. 繪製微米級真實螢光圖
+        const ctxFl = flCanvas.getContext('2d', { willReadFrequently: true });
+        const w = flCanvas.width, h = flCanvas.height;
+        const imgData = ctxFl.createImageData(w, h);
+        const data = imgData.data;
+
+        for(let y=0; y<h; y++) {
+            for(let x=0; x<w; x++) {
+                let px = (x - w/2)/(w/2);
+                let py = (y - h/2)/(h/2);
+                let r_norm = Math.sqrt(px*px + py*py);
+                let idx = (y*w + x)*4;
+
+                if (r_norm > 1) { data[idx+3] = 0; continue; }
+
+                let r = r_norm * rMax;
+                // 驗光標準轉換：螢幕 py 向下為正，所以 -py 讓向上為正(90度)
+                let th = Math.atan2(-py, px);
+                if (th < 0) th += 2 * Math.PI;
+                
+                let zC = getCorneaZ(r, th, R1, R2, cAxisDeg);
+                let zL = getLensZ(r, th, BC1, BC2, lAxisDeg);
+                let T = 5 + apexC + zC - zL; // 預設 5um 極限淚膜
+
+                // 修正：表觀觸碰顏色優化 (10um以下極度深色)
+                let R_col, G_col, B_col;
+                if (T <= 8) { 
+                    R_col=5; G_col=5; B_col=5; 
+                } 
+                else if (T <= 25) { 
+                    let t=(T-8)/17; 
+                    R_col=5+t*17; G_col=5+t*96; B_col=5+t*47; 
+                } 
+                else if (T <= 80) { 
+                    let t=(T-25)/55; 
+                    R_col=22+t*52; G_col=101+t*121; B_col=52+t*76; 
+                } 
+                else { 
+                    R_col=74; G_col=222; B_col=128; 
+                } 
+
+                data[idx]=R_col; data[idx+1]=G_col; data[idx+2]=B_col; data[idx+3]=255;
+            }
+        }
+        ctxFl.putImageData(imgData, 0, 0);
+
+        // 2. 繪製 360 度即時橫切面淚液高度圖
+        const cw = crossCanvas.parentElement.clientWidth || 300;
+        const ch = crossCanvas.parentElement.clientHeight || 100;
+        crossCanvas.width = cw;
+        crossCanvas.height = ch;
+        const ctxCross = crossCanvas.getContext('2d');
+        ctxCross.clearRect(0, 0, cw, ch);
+
+        ctxCross.beginPath();
+        ctxCross.moveTo(0, ch);
+        for(let x=0; x<=cw; x++) {
+            let px = (x/cw)*2 - 1; 
+            let r = Math.abs(px) * rMax;
+            let th = px > 0 ? viewThRad : viewThRad + Math.PI;
+            
+            let zC = getCorneaZ(r, th, R1, R2, cAxisDeg);
+            let zL = getLensZ(r, th, BC1, BC2, lAxisDeg);
+            let T = 5 + apexC + zC - zL;
+            
+            let y = ch - (T / 120) * ch; // 最高顯示 120um
+            if(y < 0) y = 0;
+            ctxCross.lineTo(x, y);
+        }
+        ctxCross.lineTo(cw, ch);
+        ctxCross.fillStyle = 'rgba(74, 222, 128, 0.4)';
+        ctxCross.fill();
+        ctxCross.strokeStyle = '#4ade80';
+        ctxCross.lineWidth = 2;
+        ctxCross.stroke();
+
+        return {
+            center: Math.round(5 + apexC + getCorneaZ(0, viewThRad, R1, R2, cAxisDeg) - getLensZ(0, viewThRad, BC1, BC2, lAxisDeg)),
+            mid: Math.round(5 + apexC + getCorneaZ(1.5, viewThRad, R1, R2, cAxisDeg) - getLensZ(1.5, viewThRad, BC1, BC2, lAxisDeg)),
+            edge: Math.round(5 + apexC + getCorneaZ(3.5, viewThRad, R1, R2, cAxisDeg) - getLensZ(3.5, viewThRad, BC1, BC2, lAxisDeg)),
+            far: Math.round(5 + apexC + getCorneaZ(4.2, viewThRad, R1, R2, cAxisDeg) - getLensZ(4.2, viewThRad, BC1, BC2, lAxisDeg))
+        };
+    }
+
+    // 繪製 12 色階角膜地形圖 (TOPO)
+    function drawTopo(canvasId, R1_mm, R2_mm, axisDeg, minLabelId, maxLabelId) {
+        const canvas = document.getElementById(canvasId);
+        if(!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width, h = canvas.height;
+        const imgData = ctx.createImageData(w, h);
+        const data = imgData.data;
+
+        let kFlat = 337.5 / R1_mm;
+        let kSteep = 337.5 / R2_mm;
+        if (kFlat > kSteep) { let temp = kFlat; kFlat = kSteep; kSteep = temp; }
+
+        let th_c = axisDeg * Math.PI / 180;
+        let dMin = kFlat - 1.0;
+        let dMax = kSteep + 1.0;
+        if(dMax - dMin < 2) { dMax = dMin + 2; } 
+
+        const colors = [
+            [0, 0, 139], [0, 0, 255], [0, 191, 255], [0, 255, 255], 
+            [0, 250, 154], [0, 255, 0], [173, 255, 47], [255, 255, 0], 
+            [255, 165, 0], [255, 69, 0], [255, 0, 0], [139, 0, 0]
+        ];
+
+        for(let y=0; y<h; y++) {
+            for(let x=0; x<w; x++) {
+                let px = (x - w/2)/(w/2);
+                let py = (y - h/2)/(h/2);
+                let r_norm = Math.sqrt(px*px + py*py);
+                let idx = (y*w + x)*4;
+
+                if (r_norm > 1) { data[idx+3] = 0; continue; }
+
+                let th = Math.atan2(-py, px);
+                if (th < 0) th += 2 * Math.PI;
+                let angle = th - th_c;
+                
+                let D = kFlat * Math.pow(Math.cos(angle), 2) + kSteep * Math.pow(Math.sin(angle), 2);
+                D = D - 1.5 * (r_norm * r_norm); 
+
+                let normalized = (D - dMin) / (dMax - dMin);
+                if (normalized < 0) normalized = 0;
+                if (normalized > 0.999) normalized = 0.999;
+
+                let cIdx = Math.floor(normalized * 12);
+                let c = colors[cIdx];
+
+                data[idx] = c[0]; data[idx+1] = c[1]; data[idx+2] = c[2]; data[idx+3] = 255;
+            }
+        }
+        ctx.putImageData(imgData, 0, 0);
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(w/2, h/2, w/4, 0, Math.PI*2);
+        ctx.arc(w/2, h/2, w/2, 0, Math.PI*2);
+        ctx.stroke();
+
+        if (document.getElementById(minLabelId)) document.getElementById(minLabelId).innerText = dMin.toFixed(1) + 'D';
+        if (document.getElementById(maxLabelId)) document.getElementById(maxLabelId).innerText = dMax.toFixed(1) + 'D';
+    }
+
+    // 拖曳旋轉監聽器
+    function initDraggableAngle(containerId, lineId, valId, updateCb) {
+        const container = document.getElementById(containerId);
+        const line = document.getElementById(lineId);
+        const val = document.getElementById(valId);
+        if (!container || !line || !val) return;
+        
+        container.onmousedown = null; container.onmousemove = null; container.onmouseup = null;
+        container.ontouchstart = null; container.ontouchmove = null; container.ontouchend = null;
+
+        let isDragging = false;
+        const updateAngle = (e) => {
+            const rect = container.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            let clientX = e.clientX;
+            let clientY = e.clientY;
+            if(e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            }
+            const dx = clientX - cx;
+            const dy = clientY - cy;
+            
+            let deg = Math.atan2(-dy, dx) * 180 / Math.PI;
+            if (deg < 0) deg += 360;
+            
+            let viewDeg = Math.round(deg) % 180;
+            val.innerText = viewDeg + '°';
+            line.style.transform = `rotate(${-viewDeg}deg)`; 
+            updateCb(viewDeg);
+        };
+
+        const startDrag = (e) => { isDragging = true; updateAngle(e); e.preventDefault(); };
+        const doDrag = (e) => { if (isDragging) { updateAngle(e); e.preventDefault(); } };
+        const stopDrag = () => { isDragging = false; };
+
+        container.addEventListener('mousedown', startDrag);
+        window.addEventListener('mousemove', doDrag);
+        window.addEventListener('mouseup', stopDrag);
+        container.addEventListener('touchstart', startDrag, {passive: false});
+        window.addEventListener('touchmove', doDrag, {passive: false});
+        window.addEventListener('touchend', stopDrag);
+    }
+    // ==========================================
+
     function handleStampUpload() {
       const fileInput = document.getElementById('op-modal-stamp-input');
       const file = fileInput.files[0];
@@ -448,7 +692,7 @@
       };
       reader.readAsDataURL(file);
     }
-    
+
     let sessionData = {
       scl: { OD: { inputs: {}, res: null, photo: null }, OS: { inputs: {}, res: null, photo: null } },
       rgp: { OD: { inputs: {}, res: null, photo: null }, OS: { inputs: {}, res: null, photo: null } },
@@ -465,8 +709,56 @@
         const cacheOp = localStorage.getItem('active_optometrist');
         if(cacheOp) { currentOptometrist = JSON.parse(cacheOp); updateOptometristUI(); }
       } catch(e) {}
+      
+      injectRgpUiUpdates();
+      injectToricUiUpdates();
     }
     window.onload = loadCustomers;
+
+    function injectRgpUiUpdates() {
+        const rgpContainer = document.querySelector('#view-rgp .bg-white\\/80.grid-cols-3');
+        if (rgpContainer) {
+            rgpContainer.innerHTML = `
+                <div class="col-span-3 grid grid-cols-2 gap-4">
+                    <div><label class="block font-bold text-slate-600 mb-1">R1 (平K) mm</label>
+                        <div class="flex border rounded-lg overflow-hidden bg-white"><input type="number" id="rgp-r1" step="0.01" placeholder="R1 mm" class="w-2/3 p-2 outline-none border-r shadow-inner" onchange="calcRgpStep1()"><input type="number" id="rgp-axis" placeholder="軸度" class="w-1/3 p-2 outline-none bg-slate-50 shadow-inner" onchange="calcRgpStep1()"></div>
+                    </div>
+                    <div><label class="block font-bold text-slate-600 mb-1">R2 (陡K) mm</label>
+                        <div class="flex border rounded-lg overflow-hidden items-center bg-white"><input type="number" id="rgp-r2" step="0.01" placeholder="R2 mm" class="w-2/3 p-2 outline-none border-r shadow-inner" onchange="calcRgpStep1()"><span id="rgp-r2-axis" class="w-1/3 text-center text-xs font-bold text-slate-400">@ 90</span></div>
+                    </div>
+                </div>
+                <div class="col-span-3 mt-2"><label class="block font-bold text-slate-600 mb-1">CS (角膜直徑)</label><input type="number" id="rgp-cs" step="0.1" placeholder="mm" class="w-full border p-2 rounded-lg outline-none shadow-inner" onchange="calcRgpStep1()"></div>
+            `;
+        }
+    }
+
+    function injectToricUiUpdates() {
+        const toricContainer = document.querySelector('#view-toric .bg-white\\/80 .grid-cols-3');
+        if (toricContainer) {
+            toricContainer.className = "space-y-3";
+            toricContainer.innerHTML = `
+                <div class="grid grid-cols-4 gap-3">
+                    <input type="number" id="t-sph" step="0.25" placeholder="SPH" class="border p-2 rounded-lg outline-none shadow-inner col-span-1">
+                    <div class="flex border rounded-lg overflow-hidden bg-white shadow-inner col-span-2">
+                        <input type="number" id="t-cyl" step="0.25" placeholder="CYL" class="w-1/2 p-2 outline-none border-r">
+                        <input type="number" id="t-axis-spec" placeholder="眼鏡軸度" class="w-1/2 p-2 outline-none bg-slate-50 text-slate-700">
+                    </div>
+                    <input type="number" id="t-vd" value="12" placeholder="V.D." class="border p-2 rounded-lg text-slate-400 outline-none shadow-inner col-span-1">
+                </div>
+                <div class="grid grid-cols-2 gap-3 mt-2">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 mb-1">K1 (平K)</label>
+                        <div class="flex border rounded-lg overflow-hidden bg-white"><input type="number" id="t-k1" step="0.25" placeholder="D" class="w-2/3 p-2 outline-none border-r shadow-inner" onchange="calcToricStep2()"><input type="number" id="t-axis" placeholder="軸度" class="w-1/3 p-2 outline-none bg-slate-50 shadow-inner" onchange="calcToricStep2()"></div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 mb-1">K2 (陡K)</label>
+                        <div class="flex border rounded-lg overflow-hidden items-center bg-white"><input type="number" id="t-k2" step="0.25" placeholder="D" class="w-2/3 p-2 outline-none border-r shadow-inner"><span id="t-k2-axis" class="w-1/3 text-center text-xs font-bold text-slate-400">@ 90</span></div>
+                    </div>
+                </div>
+                <div><input type="number" id="t-cs" step="0.1" placeholder="CS (角膜直徑 mm)" class="w-full border border-slate-300 bg-white p-2 rounded-lg outline-none shadow-inner mt-1" onchange="calcToricStep2()"></div>
+            `;
+        }
+    }
 
     async function fetchCloudOptometrists() {
       try {
@@ -568,7 +860,6 @@
         await fetchCloudOptometrists();
         renderOptometristDropdown();
         
-        // 嘗試自動選擇剛剛編輯/新增的人
         const newIndex = optometristList.findIndex(op => op.name === name && op.license === license);
         if (newIndex >= 0) document.getElementById('op-modal-select').value = newIndex;
         
@@ -690,22 +981,32 @@
         };
       } else if (type === 'rgp') {
         sessionData.rgp[eye].inputs = {
-          r1: document.getElementById('rgp-r1').value, r2: document.getElementById('rgp-r2').value, cs: document.getElementById('rgp-cs').value,
+          r1: document.getElementById('rgp-r1') ? document.getElementById('rgp-r1').value : '', 
+          r2: document.getElementById('rgp-r2') ? document.getElementById('rgp-r2').value : '', 
+          axis: document.getElementById('rgp-axis') ? document.getElementById('rgp-axis').value : '',
+          cs: document.getElementById('rgp-cs') ? document.getElementById('rgp-cs').value : '',
           trialDia: document.getElementById('rgp-trial-dia').value, actualBc: document.getElementById('rgp-actual-bc').value,
           orSph: document.getElementById('rgp-or-sph').value, orCyl: document.getElementById('rgp-or-cyl').value,
           trialPower: document.getElementById('rgp-trial-power').value, finalDia: document.getElementById('rgp-final-dia').value, notes: document.getElementById('rgp-notes').value
         };
       } else if (type === 'toric') {
         sessionData.toric[eye].inputs = {
-          sph: document.getElementById('t-sph').value, cyl: document.getElementById('t-cyl').value, vd: document.getElementById('t-vd').value,
-          k1: document.getElementById('t-k1').value, k2: document.getElementById('t-k2').value, cs: document.getElementById('t-cs').value, notes: document.getElementById('toric-notes').value
+          sph: document.getElementById('t-sph') ? document.getElementById('t-sph').value : '', 
+          cyl: document.getElementById('t-cyl') ? document.getElementById('t-cyl').value : '', 
+          specAxis: document.getElementById('t-axis-spec') ? document.getElementById('t-axis-spec').value : '',
+          vd: document.getElementById('t-vd') ? document.getElementById('t-vd').value : '',
+          k1: document.getElementById('t-k1') ? document.getElementById('t-k1').value : '', 
+          k2: document.getElementById('t-k2') ? document.getElementById('t-k2').value : '', 
+          axis: document.getElementById('t-axis') ? document.getElementById('t-axis').value : '',
+          cs: document.getElementById('t-cs') ? document.getElementById('t-cs').value : '', 
+          notes: document.getElementById('toric-notes').value
         };
       }
     }
 
     function restoreInputsAndResultsFromSession() {
       const eye = getSelectedEye(); const type = getActiveTabType(); const data = sessionData[type][eye];
-      clearInputsAndResultsOfTab(type); document.getElementById('eye-photo-input').value = '';
+      document.getElementById('eye-photo-input').value = '';
       displayCurrentPhotoPreview(data.photo);
 
       if(data.inputs && Object.keys(data.inputs).length > 0) {
@@ -715,16 +1016,26 @@
           document.getElementById('scl-k').value = data.inputs.k || ''; document.getElementById('scl-add').value = data.inputs.add || '';
           document.getElementById('scl-notes').value = data.inputs.notes || '';
         } else if(type === 'rgp') {
-          document.getElementById('rgp-r1').value = data.inputs.r1 || ''; document.getElementById('rgp-r2').value = data.inputs.r2 || '';
-          document.getElementById('rgp-cs').value = data.inputs.cs || ''; document.getElementById('rgp-trial-dia').value = data.inputs.trialDia || '';
+          if(document.getElementById('rgp-r1')) document.getElementById('rgp-r1').value = data.inputs.r1 || ''; 
+          if(document.getElementById('rgp-r2')) document.getElementById('rgp-r2').value = data.inputs.r2 || '';
+          if(document.getElementById('rgp-axis')) document.getElementById('rgp-axis').value = data.inputs.axis || '';
+          if(document.getElementById('rgp-cs')) document.getElementById('rgp-cs').value = data.inputs.cs || ''; 
+          document.getElementById('rgp-trial-dia').value = data.inputs.trialDia || '';
           document.getElementById('rgp-actual-bc').value = data.inputs.actualBc || ''; document.getElementById('rgp-or-sph').value = data.inputs.orSph || '';
           document.getElementById('rgp-or-cyl').value = data.inputs.orCyl || ''; document.getElementById('rgp-trial-power').value = data.inputs.trialPower || '';
           document.getElementById('rgp-final-dia').value = data.inputs.finalDia || ''; document.getElementById('rgp-notes').value = data.inputs.notes || '';
+          calcRgpStep1();
         } else if(type === 'toric') {
-          document.getElementById('t-sph').value = data.inputs.sph || ''; document.getElementById('t-cyl').value = data.inputs.cyl || '';
-          document.getElementById('t-vd').value = data.inputs.vd || '12'; document.getElementById('t-k1').value = data.inputs.k1 || '';
-          document.getElementById('t-k2').value = data.inputs.k2 || ''; document.getElementById('t-cs').value = data.inputs.cs || '';
+          if(document.getElementById('t-sph')) document.getElementById('t-sph').value = data.inputs.sph || ''; 
+          if(document.getElementById('t-cyl')) document.getElementById('t-cyl').value = data.inputs.cyl || '';
+          if(document.getElementById('t-axis-spec')) document.getElementById('t-axis-spec').value = data.inputs.specAxis || '';
+          if(document.getElementById('t-vd')) document.getElementById('t-vd').value = data.inputs.vd || '12'; 
+          if(document.getElementById('t-k1')) document.getElementById('t-k1').value = data.inputs.k1 || '';
+          if(document.getElementById('t-k2')) document.getElementById('t-k2').value = data.inputs.k2 || ''; 
+          if(document.getElementById('t-axis')) document.getElementById('t-axis').value = data.inputs.axis || '';
+          if(document.getElementById('t-cs')) document.getElementById('t-cs').value = data.inputs.cs || '';
           document.getElementById('toric-notes').value = data.inputs.notes || '';
+          calcToricStep2();
         }
       }
 
@@ -744,6 +1055,8 @@
           document.getElementById('res-t-dia').innerText = data.res.dia;
           document.getElementById('toric-result').classList.remove('hidden');
         }
+      } else {
+        if(document.getElementById(`${type}-result`)) document.getElementById(`${type}-result`).classList.add('hidden');
       }
     }
 
@@ -764,8 +1077,6 @@
       const selected = document.querySelector('input[name="eye"]:checked');
       return selected ? selected.value : 'OD'; 
     }
-
-    function clearInputsAndResultsOfTab(type) {}
 
     function setActiveCustomer(id, name) { activeCustomer = { id, name }; document.getElementById('active-customer-name').innerText = name; }
     
@@ -1118,9 +1429,19 @@
     }
 
     function calcRgpStep1() {
-      const r1 = parseFloat(document.getElementById('rgp-r1').value) || 0;
-      const r2 = parseFloat(document.getElementById('rgp-r2').value) || 0;
-      const cs = parseFloat(document.getElementById('rgp-cs').value) || 0;
+      let r1 = document.getElementById('rgp-r1') ? parseFloat(document.getElementById('rgp-r1').value) : 0;
+      let r2 = document.getElementById('rgp-r2') ? parseFloat(document.getElementById('rgp-r2').value) : 0;
+      const cs = document.getElementById('rgp-cs') ? parseFloat(document.getElementById('rgp-cs').value) : 0;
+      
+      let axInput = document.getElementById('rgp-axis');
+      if (axInput && axInput.value !== '') {
+          let ax = parseInt(axInput.value) || 0;
+          let ax2 = (ax + 90) % 180; if(ax2 === 0) ax2 = 180;
+          if(document.getElementById('rgp-r2-axis')) document.getElementById('rgp-r2-axis').innerText = '@ ' + ax2;
+      } else {
+          if(document.getElementById('rgp-r2-axis')) document.getElementById('rgp-r2-axis').innerText = '@ 90';
+      }
+
       if(r1 && r2 && cs) {
         rgpAvgR = (r1 + r2) / 2; rgpSuggestedDia = cs - 2.0;
         document.getElementById('rgp-step1-hint').innerHTML = `💡 系統建議最佳尺寸：<br>👉 <span class="text-xl text-blue-950 font-black">DIA: ${rgpSuggestedDia.toFixed(1)} mm</span><br>👉 <span class="text-xl text-blue-950 font-black">基礎 BC: ${rgpAvgR.toFixed(2)} mm</span>`;
@@ -1134,6 +1455,41 @@
         document.getElementById('rgp-step3-hint').innerHTML = `💡 試戴片直徑改用 ${trialDia.toFixed(1)} mm 時：<br>👉 <span class="text-xl text-red-950 font-black">對應試片 BC 建議拿：${adjustedBC.toFixed(2)} mm</span>`;
       }
     }
+
+    window.updateRgpVisuals = function(simBc, angleDeg) {
+        let angle = angleDeg !== undefined ? angleDeg : (document.getElementById('rgp-angle-val') ? parseInt(document.getElementById('rgp-angle-val').innerText) : 0);
+        let currentR1 = parseFloat(document.getElementById('rgp-r1').value) || 0;
+        let currentR2 = parseFloat(document.getElementById('rgp-r2').value) || 0;
+        let cAxis = parseInt(document.getElementById('rgp-axis').value) || 180;
+        if(!currentR1 || !currentR2) return;
+        
+        let rMax = 4.5; 
+        let T = renderFLVisuals('rgp-fl-canvas', 'rgp-cross-canvas', currentR1, currentR2, simBc, simBc, rMax, angle, cAxis, cAxis);
+        drawTopo('rgp-topo-canvas', currentR1, currentR2, cAxis, 'rgp-topo-min', 'rgp-topo-max');
+
+        document.getElementById('rgp-fl-center-text').innerText = '中心: ' + T.center + ' μm';
+        document.getElementById('rgp-fl-mid-text').innerText = '3mm: ' + T.mid + ' μm';
+        document.getElementById('rgp-fl-edge-text').innerText = '7mm: ' + T.edge + ' μm';
+        document.getElementById('rgp-fl-far-text').innerText = '周邊: ' + T.far + ' μm';
+
+        let th = angle * Math.PI / 180;
+        let th_c = cAxis * Math.PI / 180;
+        let angleDiff = th - th_c;
+        let Cc = (1/currentR1)*Math.pow(Math.cos(angleDiff), 2) + (1/currentR2)*Math.pow(Math.sin(angleDiff), 2);
+        let currentK_meridian = 1 / Cc;
+        let bcDiff = simBc - currentK_meridian;
+
+        let fitText='', fitColor='';
+        if (bcDiff > 0.05) { fitText = '當前切面: 偏平坦 (Flat Fit)'; fitColor = 'text-red-400'; }
+        else if (bcDiff < -0.05) { fitText = '當前切面: 偏緊陡 (Steep Fit)'; fitColor = 'text-blue-400'; }
+        else { fitText = '當前切面: 理想配適 (Alignment)'; fitColor = 'text-emerald-400'; }
+
+        const statusEl = document.getElementById('rgp-fl-status-text');
+        if(statusEl) {
+            statusEl.innerText = fitText;
+            statusEl.className = `text-[13px] font-black ${fitColor} print:text-slate-800 mb-4`;
+        }
+    };
 
     function calcRGP() {
       const eye = getSelectedEye(); const orSph = parseFloat(document.getElementById('rgp-or-sph').value) || 0;
@@ -1150,6 +1506,18 @@
       const finalPowerRounded = formatD(round025(rawFinalPower));
       const strBc = finalBcCalculated.toFixed(2); const strDia = finalDia.toFixed(1);
 
+      // 臨床限制警告邏輯
+      let orCyl = Math.abs(parseFloat(document.getElementById('rgp-or-cyl').value) || 0);
+      let warnings = [];
+      if (orCyl >= 0.75) {
+          warnings.push("⚠️ <b>內部散光偏高</b>：Over-Refraction 顯示殘留散光達 0.75D 以上。代表角膜散光小於眼球總散光過多（內部晶體散光影響），單純球面 RGP 無法完全矯正，請評估患者視覺品質或改用散光設計。");
+      }
+      
+      let warningHtml = '';
+      if (warnings.length > 0) {
+          warningHtml = `<div class="mt-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm space-y-2 text-xs text-red-900 leading-relaxed">${warnings.map(w => `<p>${w}</p>`).join('')}</div>`;
+      }
+
       document.getElementById('res-rgp-power').innerText = finalPowerRounded;
       document.getElementById('res-rgp-bc').innerText = `${strBc} mm (連帶補償 ${formatD(bcDiff)}mm)`;
       document.getElementById('res-rgp-dia').innerText = strDia; 
@@ -1157,7 +1525,6 @@
 
       const r1 = parseFloat(document.getElementById('rgp-r1').value) || 0;
       const r2 = parseFloat(document.getElementById('rgp-r2').value) || 0;
-      const avgK = r1 && r2 ? (r1 + r2) / 2 : 0;
       
       let visualBox = document.getElementById('rgp-visual-container');
       if (!visualBox) {
@@ -1165,85 +1532,87 @@
         visualBox = document.getElementById('rgp-visual-container');
       }
 
-      window.updateRgpVisuals = function(simBc) {
-        const bcDiff = simBc - avgK;
-        let centerUm=0, midUm=0, edgeUm=0, farUm=0, flGradient='', fitText='', fitColor='';
-        
-        if (bcDiff < -0.05) { 
-          centerUm = Math.round(30 + Math.abs(bcDiff * 150)); midUm = 15; edgeUm = 5; farUm = 65;
-          flGradient = 'radial-gradient(circle, #4ade80 20%, #064e3b 65%, #22c55e 85%, #4ade80 100%)';
-          fitText = '中央積水 (Steep Fit)'; fitColor = 'text-blue-400';
-        } else if (bcDiff > 0.05) { 
-          centerUm = 0; midUm = Math.round(15 + bcDiff * 80); edgeUm = Math.round(30 + bcDiff * 150); farUm = Math.round(60 + bcDiff * 200);
-          flGradient = 'radial-gradient(circle, #022c22 10%, #4ade80 50%, #166534 85%, #4ade80 100%)';
-          fitText = '中央接觸 (Flat Fit)'; fitColor = 'text-red-400';
-        } else { 
-          centerUm = 15; midUm = 15; edgeUm = 20; farUm = 45;
-          flGradient = 'radial-gradient(circle, #22c55e 30%, #166534 75%, #4ade80 100%)';
-          fitText = '理想配適 (Alignment)'; fitColor = 'text-emerald-400';
-        }
+      let oldRgpStep = document.getElementById('rgp-step-select') ? document.getElementById('rgp-step-select').value : '0.01';
 
-        document.getElementById('rgp-fl-pattern-bg').style.background = flGradient;
-        document.getElementById('rgp-fl-center-text').innerText = '中心: ' + centerUm + ' μm';
-        document.getElementById('rgp-fl-mid-text').innerText = '2mm: ' + midUm + ' μm';
-        document.getElementById('rgp-fl-edge-text').innerText = '4mm: ' + edgeUm + ' μm';
-        document.getElementById('rgp-fl-far-text').innerText = '8mm: ' + farUm + ' μm';
-        const statusEl = document.getElementById('rgp-fl-status-text');
-        statusEl.innerText = fitText;
-        statusEl.className = `text-xl font-black ${fitColor} print:text-slate-800 mb-4`;
-      };
-
-      if (avgK > 0) {
-        if (!document.getElementById('rgp-fl-pattern-bg')) {
+      if (r1 > 0 && r2 > 0) {
           visualBox.innerHTML = `
-            <div class="w-full bg-slate-900 print:bg-slate-100 p-6 print:p-2 rounded-xl border flex flex-col items-center shadow-xl">
-              <p class="text-slate-300 print:text-slate-700 font-bold text-xs mb-2 uppercase">🧪 球面螢光染色靜態預測</p>
+            ${warningHtml}
+            <div class="w-full bg-slate-900 print:bg-slate-100 p-6 print:p-2 rounded-xl border flex flex-col items-center shadow-xl mt-6">
+              <p class="text-slate-300 print:text-slate-700 font-bold text-xs mb-2 uppercase">🧪 360° 角膜地形圖與球面螢光剖面</p>
               <p id="rgp-fl-status-text"></p>
               
-              <div class="relative w-64 h-64 print:w-40 print:h-40 rounded-full border-4 border-slate-800 print:border-slate-300 shadow-[0_0_40px_rgba(34,197,94,0.15)] print:shadow-none flex items-center justify-center my-6">
-                <div id="rgp-fl-pattern-bg" class="absolute inset-0 rounded-full overflow-hidden opacity-85 print:opacity-100 transition-colors duration-75"></div>
-                <div class="absolute w-full h-px border-t border-dashed border-white/20 print:border-black/20 z-0"></div>
-                <div class="absolute h-full w-px border-l border-dashed border-white/20 print:border-black/20 z-0"></div>
-                
-                <div class="absolute w-16 h-16 print:w-10 print:h-10 rounded-full border border-white/40 print:border-black/30 border-dashed z-0"></div>
-                <div class="absolute w-36 h-36 print:w-20 print:h-20 rounded-full border border-white/40 print:border-black/30 border-dashed z-0"></div>
-                <div class="absolute w-56 h-56 print:w-32 print:h-32 rounded-full border border-white/40 print:border-black/30 border-dashed z-0"></div>
+              <div class="grid grid-cols-2 gap-4 md:gap-8 my-4 w-full max-w-lg">
+                  <div class="flex flex-col items-center">
+                      <span class="text-[10px] text-white bg-slate-700 px-2 py-1 rounded-t-lg w-full text-center border-b border-slate-600">角膜地形圖 (TOPO)</span>
+                      <div class="relative w-36 h-36 md:w-44 md:h-44 rounded-b-lg border-2 border-slate-700 overflow-hidden bg-black flex items-center justify-center shadow-inner">
+                          <canvas id="rgp-topo-canvas" width="200" height="200" class="absolute inset-0 w-full h-full object-cover"></canvas>
+                      </div>
+                      <div class="w-full mt-2">
+                          <div class="h-1.5 w-full rounded-full" style="background: linear-gradient(to right, #00008b, #0000ff, #00bfff, #00ffff, #00fa9a, #00ff00, #adff2f, #ffff00, #ffa500, #ff4500, #ff0000, #8b0000);"></div>
+                          <div class="flex justify-between text-[8px] text-slate-400 mt-0.5 font-bold"><span id="rgp-topo-min">平</span><span id="rgp-topo-max">陡</span></div>
+                      </div>
+                  </div>
 
-                <div class="absolute w-1.5 h-1.5 bg-white print:bg-black rounded-full shadow-[0_0_5px_white] z-10"></div>
-                
-                <div class="absolute flex flex-col items-center justify-end z-20" style="transform: translateY(-20px);">
-                  <span id="rgp-fl-center-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap mb-1 border border-slate-600 print:border-slate-300"></span>
-                  <div class="w-px h-4 bg-white/70 print:bg-slate-500"></div>
-                </div>
-                
-                <div class="absolute flex items-center justify-start z-20" style="transform: translateX(32px);">
-                  <div class="w-6 h-px bg-white/70 print:bg-slate-500"></div>
-                  <span id="rgp-fl-mid-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap ml-1 border border-slate-600 print:border-slate-300"></span>
-                </div>
-
-                <div class="absolute flex flex-col items-center justify-start z-20" style="transform: translateY(72px);">
-                  <div class="w-px h-6 bg-white/70 print:bg-slate-500"></div>
-                  <span id="rgp-fl-edge-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap mt-1 border border-slate-600 print:border-slate-300"></span>
-                </div>
-
-                <div class="absolute flex items-center justify-end z-20" style="transform: translateX(-112px);">
-                  <span id="rgp-fl-far-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap mr-1 border border-slate-600 print:border-slate-300"></span>
-                  <div class="w-6 h-px bg-white/70 print:bg-slate-500"></div>
-                </div>
+                  <div class="flex flex-col items-center">
+                      <span class="text-[10px] text-white bg-slate-700 px-2 py-1 rounded-t-lg w-full text-center border-b border-slate-600">靜態螢光圖 (FL)</span>
+                      <div id="rgp-fl-container" class="relative w-36 h-36 md:w-44 md:h-44 rounded-b-lg border-2 border-slate-700 overflow-hidden bg-black flex items-center justify-center shadow-inner cursor-pointer" style="touch-action: none;">
+                          <canvas id="rgp-fl-canvas" width="200" height="200" class="absolute inset-0 w-full h-full object-cover opacity-90"></canvas>
+                          <div id="rgp-cross-line" class="absolute top-1/2 left-0 w-full h-0.5 bg-yellow-400 z-30 shadow-[0_0_5px_yellow] flex justify-between items-center pointer-events-none" style="transform: rotate(0deg); transform-origin: center;">
+                              <div class="w-2.5 h-2.5 bg-yellow-400 rounded-full shadow-[0_0_5px_white] -ml-1"></div>
+                              <div class="w-2.5 h-2.5 bg-yellow-400 rounded-full shadow-[0_0_5px_white] -mr-1"></div>
+                          </div>
+                          <div class="absolute w-full h-px border-t border-dashed border-white/20 z-0 pointer-events-none"></div>
+                          <div class="absolute h-full w-px border-l border-dashed border-white/20 z-0 pointer-events-none"></div>
+                          <div class="absolute w-[30%] h-[30%] rounded-full border border-white/40 border-dashed z-0 pointer-events-none"></div>
+                          <div class="absolute w-[70%] h-[70%] rounded-full border border-white/40 border-dashed z-0 pointer-events-none"></div>
+                      </div>
+                      <div class="w-full mt-3 grid grid-cols-2 gap-x-2 gap-y-1 text-[9px] text-slate-300 font-bold text-center">
+                          <span id="rgp-fl-center-text" class="bg-slate-800 rounded"></span><span id="rgp-fl-mid-text" class="bg-slate-800 rounded"></span>
+                          <span id="rgp-fl-edge-text" class="bg-slate-800 rounded"></span><span id="rgp-fl-far-text" class="bg-slate-800 rounded"></span>
+                      </div>
+                  </div>
               </div>
               
+              <div class="w-full bg-slate-800 p-4 rounded-lg mt-2 no-print">
+                  <div class="flex justify-between items-center text-[10px] text-slate-400 font-bold mb-2">
+                      <span>橫切面觀測角度 (可直接按住圓周黃點拖拉)</span>
+                      <span id="rgp-angle-val" class="text-yellow-400 text-sm bg-slate-900 px-2 py-1 rounded shadow-inner">0°</span>
+                  </div>
+                  <div class="relative w-full h-24 bg-slate-950 border border-slate-700 rounded-lg overflow-hidden shadow-inner">
+                      <div class="absolute w-full top-[16%] border-t border-slate-700/50"><span class="text-[8px] text-slate-500 absolute left-1 -top-3">100μm</span></div>
+                      <div class="absolute w-full top-[58%] border-t border-slate-700/50"><span class="text-[8px] text-slate-500 absolute left-1 -top-3">50μm</span></div>
+                      <div class="absolute w-full top-[91%] border-t border-red-500/50"><span class="text-[8px] text-red-500/80 absolute left-1 -top-3">10μm Touch</span></div>
+                      <canvas id="rgp-cross-canvas" class="absolute inset-0 w-full h-full"></canvas>
+                  </div>
+              </div>
+
               <div class="w-full mt-6 bg-slate-800 p-4 rounded-lg no-print">
-                <div class="flex justify-between text-xs text-slate-300 font-bold mb-2"><span>緊 (Steep)</span><span class="text-cyan-400 text-base" id="dynamic-bc-val">BC: ${finalBcCalculated.toFixed(2)}</span><span>鬆 (Flat)</span></div>
-                <input type="range" id="rgp-sim-slider" min="${avgK - 0.3}" max="${avgK + 0.3}" step="0.05" value="${finalBcCalculated}" class="w-full mb-3 accent-cyan-500" oninput="
-                  document.getElementById('dynamic-bc-val').innerText = 'BC: ' + parseFloat(this.value).toFixed(2);
-                  window.updateRgpVisuals(parseFloat(this.value));
+                <div class="flex justify-between text-xs text-slate-300 font-bold mb-2">
+                    <span>緊 (Steep)</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-cyan-400 text-base" id="dynamic-bc-val">球面 BC: ${finalBcCalculated.toFixed(2)}</span>
+                        <select id="rgp-step-select" class="bg-slate-700 text-slate-300 border border-slate-600 rounded outline-none p-0.5 text-[10px]" onchange="document.getElementById('rgp-sim-slider').step = this.value;">
+                            <option value="0.01" ${oldRgpStep === '0.01' ? 'selected' : ''}>間距 0.01</option>
+                            <option value="0.05" ${oldRgpStep === '0.05' ? 'selected' : ''}>間距 0.05</option>
+                        </select>
+                    </div>
+                    <span>鬆 (Flat)</span>
+                </div>
+                <input type="range" id="rgp-sim-slider" min="${((r1+r2)/2) - 0.40}" max="${((r1+r2)/2) + 0.40}" step="${oldRgpStep}" value="${finalBcCalculated}" class="w-full mb-3 accent-cyan-500" oninput="
+                  document.getElementById('dynamic-bc-val').innerText = '球面 BC: ' + parseFloat(this.value).toFixed(2);
+                  window.updateRgpVisuals(parseFloat(this.value), parseInt(document.getElementById('rgp-angle-val').innerText));
                 ">
                 <button onclick="document.getElementById('rgp-actual-bc').value = document.getElementById('rgp-sim-slider').value; calcRGP();" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 rounded">✅ 將此 BC 帶入處方並重算</button>
               </div>
             </div>
           `;
-        }
-        window.updateRgpVisuals(finalBcCalculated); 
+          
+          setTimeout(() => {
+              initDraggableAngle('rgp-fl-container', 'rgp-cross-line', 'rgp-angle-val', (deg) => {
+                  window.updateRgpVisuals(parseFloat(document.getElementById('rgp-sim-slider').value), deg);
+              });
+              window.updateRgpVisuals(finalBcCalculated, 0); 
+          }, 10);
       } else {
         visualBox.innerHTML = '';
       }
@@ -1252,13 +1621,56 @@
     }
 
     function calcToricStep2() {
-      const k1 = parseFloat(document.getElementById('t-k1').value) || 0;
-      const cs = parseFloat(document.getElementById('t-cs').value) || 0;
+      let k1 = document.getElementById('t-k1') ? parseFloat(document.getElementById('t-k1').value) : 0;
+      let cs = document.getElementById('t-cs') ? parseFloat(document.getElementById('t-cs').value) : 0;
+      
+      let axInput = document.getElementById('t-axis');
+      if (axInput && axInput.value !== '') {
+          let ax = parseInt(axInput.value) || 0;
+          let ax2 = (ax + 90) % 180; if(ax2 === 0) ax2 = 180;
+          if(document.getElementById('t-k2-axis')) document.getElementById('t-k2-axis').innerText = '@ ' + ax2;
+      } else {
+          if(document.getElementById('t-k2-axis')) document.getElementById('t-k2-axis').innerText = '@ 90';
+      }
+
       if(k1 && cs) {
         const trialDia = (cs - 2.0).toFixed(1); const trialBc = (337.5 / k1).toFixed(2);
         document.getElementById('toric-step2-hint').innerHTML = `💡 拿出試片規格建議：<br>👉 <span class="text-xl text-slate-900 font-black">DIA: ${trialDia} mm</span><br>👉 <span class="text-xl text-slate-900 font-black">BC 大約: ${trialBc} mm</span>`;
       }
     }
+
+    window.updateToricVisuals = function(offset, angleDeg) {
+        let angle = angleDeg !== undefined ? angleDeg : (document.getElementById('t-angle-val') ? parseInt(document.getElementById('t-angle-val').innerText) : 0);
+        let k1_D = parseFloat(document.getElementById('t-k1').value) || 0;
+        let k2_D = parseFloat(document.getElementById('t-k2').value) || 0;
+        let cAxis = parseInt(document.getElementById('t-axis').value) || 180;
+        if(!k1_D || !k2_D) return;
+
+        let r1 = 337.5 / k1_D;
+        let r2 = 337.5 / k2_D;
+        let BC1 = 337.5 / (k1_D - 0.25) + offset;
+        let BC2 = 337.5 / (k2_D - 1.00) + offset;
+        
+        let rMax = 4.5;
+        let T = renderFLVisuals('t-fl-canvas', 't-cross-canvas', r1, r2, BC1, BC2, rMax, angle, cAxis, cAxis);
+        drawTopo('t-topo-canvas', r1, r2, cAxis, 't-topo-min', 't-topo-max');
+        
+        document.getElementById('t-fl-center-text').innerText = '中心: ' + T.center + ' μm';
+        document.getElementById('t-fl-mid-text').innerText = '3mm: ' + T.mid + ' μm';
+        document.getElementById('t-fl-edge-text').innerText = '7mm: ' + T.edge + ' μm';
+        document.getElementById('t-fl-far-text').innerText = '周邊: ' + T.far + ' μm';
+
+        let fitText='', fitColor='';
+        if (offset > 0.05) { fitText = '當前切面: 偏平坦 (Flat Fit)'; fitColor = 'text-red-400'; }
+        else if (offset < -0.05) { fitText = '當前切面: 偏緊陡 (Steep Fit)'; fitColor = 'text-blue-400'; }
+        else { fitText = '當前切面: 雙軸理想配適 (Alignment)'; fitColor = 'text-emerald-400'; }
+
+        const statusEl = document.getElementById('t-fl-status-text');
+        if(statusEl) {
+            statusEl.innerText = fitText;
+            statusEl.className = `text-[13px] font-black ${fitColor} print:text-slate-800 mb-4`;
+        }
+    };
 
     function calcToric() {
       const eye = getSelectedEye(); const sph = parseFloat(document.getElementById('t-sph').value) || 0;
@@ -1276,6 +1688,28 @@
       
       const p1 = formatD(vertex_1 - (-0.25)); const p2 = formatD(vertex_2 - (-1.00)); const finalDia = cs ? (cs - 2.0).toFixed(1) : '9.8';
 
+      // 臨床限制警告邏輯
+      let specCyl = Math.abs(parseFloat(document.getElementById('t-cyl').value) || 0);
+      let specAx = parseInt(document.getElementById('t-axis-spec').value) || 0;
+      let cAxis = parseInt(document.getElementById('t-axis').value) || 0;
+      let deltaK = Math.abs(k2 - k1);
+      
+      let warnings = [];
+      if (Math.abs(specCyl - deltaK) >= 0.75) {
+          warnings.push("⚠️ <b>內部散光偏高</b>：眼鏡散光與角膜散光量差異達 0.75D 以上。即便使用雙環曲面 (Bitoric)，仍可能產生明顯殘留散光，請先評估患者是否能接受，或考慮前弧散光設計 (Front Toric)。");
+      }
+      
+      let axDiff = Math.abs(specAx - cAxis);
+      if (axDiff > 90) axDiff = 180 - axDiff;
+      if (axDiff >= 15 && specCyl > 0) {
+          warnings.push(`⚠️ <b>軸度明顯偏移 (${axDiff}°)</b>：眼鏡散光軸 (${specAx}°) 與角膜平 K 軸 (${cAxis}°) 差異超過 15 度。若使用標準 Bitoric 鏡片，會因鏡片旋轉引發「交叉圓柱鏡效應」，產生全新的殘留散光，此患者屈光矯正較為受限，請加強衛教溝通。`);
+      }
+
+      let warningHtml = '';
+      if (warnings.length > 0) {
+          warningHtml = `<div class="mt-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm space-y-2 text-xs text-red-900 leading-relaxed">${warnings.map(w => `<p>${w}</p>`).join('')}</div>`;
+      }
+
       document.getElementById('res-t-bc1').innerText = bc1_mm; document.getElementById('res-t-p1').innerText = p1;
       document.getElementById('res-t-bc2').innerText = bc2_mm; document.getElementById('res-t-p2').innerText = p2;
       document.getElementById('res-t-dia').innerText = finalDia; 
@@ -1287,84 +1721,88 @@
         visualBox = document.getElementById('toric-visual-container');
       }
 
-      window.updateToricVisuals = function(currentOffset) {
-        let centerUm=0, midUm=0, edgeUm=0, farUm=0, flGradient='', fitText='', fitColor='';
-        if (currentOffset < -0.05) { 
-          centerUm = Math.round(30 + Math.abs(currentOffset * 150)); midUm = 15; edgeUm = 5; farUm = 65;
-          flGradient = 'radial-gradient(ellipse 25% 85% at center, #4ade80 20%, transparent 60%), radial-gradient(circle, #022c22 30%, #166534 70%, #4ade80 100%)';
-          fitText = '全軸偏緊 (Steep Fit)'; fitColor = 'text-blue-400';
-        } else if (currentOffset > 0.05) { 
-          centerUm = 0; midUm = Math.round(15 + currentOffset * 80); edgeUm = Math.round(30 + currentOffset * 150); farUm = Math.round(60 + currentOffset * 200);
-          flGradient = 'radial-gradient(ellipse 85% 25% at center, #022c22 20%, transparent 60%), radial-gradient(circle, #22c55e 30%, #166534 70%, #4ade80 100%)';
-          fitText = '全軸偏平 (Flat Fit)'; fitColor = 'text-red-400';
-        } else { 
-          centerUm = 15; midUm = 15; edgeUm = 20; farUm = 45;
-          flGradient = 'radial-gradient(ellipse 45% 85% at center, #22c55e 30%, transparent 70%), radial-gradient(ellipse 85% 45% at center, #22c55e 30%, transparent 70%), radial-gradient(circle, #166534 40%, #064e3b 70%, #4ade80 100%)';
-          fitText = '雙軸理想配適 (Alignment)'; fitColor = 'text-emerald-400';
-        }
-        
-        document.getElementById('t-fl-pattern-bg').style.background = flGradient;
-        document.getElementById('t-fl-center-text').innerText = '中心: ' + centerUm + ' μm';
-        document.getElementById('t-fl-mid-text').innerText = '2mm: ' + midUm + ' μm';
-        document.getElementById('t-fl-edge-text').innerText = '4mm: ' + edgeUm + ' μm';
-        document.getElementById('t-fl-far-text').innerText = '8mm: ' + farUm + ' μm';
-        const statusEl = document.getElementById('t-fl-status-text');
-        statusEl.innerText = fitText;
-        statusEl.className = `text-xl font-black ${fitColor} print:text-slate-800 mb-4`;
-      };
+      let oldTStep = document.getElementById('t-step-select') ? document.getElementById('t-step-select').value : '0.01';
 
       if (k1 > 0 && k2 > 0) {
-        if(!document.getElementById('t-fl-pattern-bg')) {
           visualBox.innerHTML = `
-            <div class="w-full bg-slate-900 print:bg-slate-100 p-6 print:p-2 rounded-xl border flex flex-col items-center shadow-xl">
-              <p class="text-slate-300 print:text-slate-700 font-bold text-xs mb-2 uppercase">🧪 雙軸環曲面(Toric) 啞鈴狀靜態預測</p>
+            ${warningHtml}
+            <div class="w-full bg-slate-900 print:bg-slate-100 p-6 print:p-2 rounded-xl border flex flex-col items-center shadow-xl mt-6">
+              <p class="text-slate-300 print:text-slate-700 font-bold text-xs mb-2 uppercase">🧪 360° 角膜地形圖與 Toric 螢光剖面</p>
               <p id="t-fl-status-text"></p>
               
-              <div class="relative w-64 h-64 print:w-40 print:h-40 rounded-full border-4 border-slate-800 print:border-slate-300 shadow-[0_0_40px_rgba(34,197,94,0.15)] print:shadow-none flex items-center justify-center my-6">
-                <div id="t-fl-pattern-bg" class="absolute inset-0 rounded-full overflow-hidden opacity-85 print:opacity-100 transition-colors duration-75"></div>
-                <div class="absolute w-full h-px border-t border-dashed border-white/20 print:border-black/20 z-0"></div>
-                <div class="absolute h-full w-px border-l border-dashed border-white/20 print:border-black/20 z-0"></div>
-                
-                <div class="absolute w-12 h-20 print:w-8 print:h-12 rounded-full border border-white/40 print:border-black/30 border-dashed z-0"></div>
-                <div class="absolute w-28 h-40 print:w-16 print:h-24 rounded-full border border-white/40 print:border-black/30 border-dashed z-0"></div>
-                <div class="absolute w-48 h-56 print:w-28 print:h-32 rounded-full border border-white/40 print:border-black/30 border-dashed z-0"></div>
-                
-                <div class="absolute w-1.5 h-1.5 bg-white print:bg-black rounded-full shadow-[0_0_5px_white] z-10"></div>
-                
-                <div class="absolute flex flex-col items-center justify-end z-20" style="transform: translateY(-20px);">
-                  <span id="t-fl-center-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap mb-1 border border-slate-600 print:border-slate-300"></span>
-                  <div class="w-px h-4 bg-white/70 print:bg-slate-500"></div>
-                </div>
-                
-                <div class="absolute flex items-center justify-start z-20" style="transform: translateX(24px);">
-                  <div class="w-6 h-px bg-white/70 print:bg-slate-500"></div>
-                  <span id="t-fl-mid-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap ml-1 border border-slate-600 print:border-slate-300"></span>
-                </div>
-                
-                <div class="absolute flex flex-col items-center justify-start z-20" style="transform: translateY(80px);">
-                  <div class="w-px h-6 bg-white/70 print:bg-slate-500"></div>
-                  <span id="t-fl-edge-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap mt-1 border border-slate-600 print:border-slate-300"></span>
-                </div>
-                
-                <div class="absolute flex items-center justify-end z-20" style="transform: translateX(-96px);">
-                  <span id="t-fl-far-text" class="text-[10px] font-bold text-white print:text-black bg-slate-800/90 print:bg-white/90 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap mr-1 border border-slate-600 print:border-slate-300"></span>
-                  <div class="w-6 h-px bg-white/70 print:bg-slate-500"></div>
-                </div>
+              <div class="grid grid-cols-2 gap-4 md:gap-8 my-4 w-full max-w-lg">
+                  <div class="flex flex-col items-center">
+                      <span class="text-[10px] text-white bg-slate-700 px-2 py-1 rounded-t-lg w-full text-center border-b border-slate-600">角膜地形圖 (TOPO)</span>
+                      <div class="relative w-36 h-36 md:w-44 md:h-44 rounded-b-lg border-2 border-slate-700 overflow-hidden bg-black flex items-center justify-center shadow-inner">
+                          <canvas id="t-topo-canvas" width="200" height="200" class="absolute inset-0 w-full h-full object-cover"></canvas>
+                      </div>
+                      <div class="w-full mt-2">
+                          <div class="h-1.5 w-full rounded-full" style="background: linear-gradient(to right, #00008b, #0000ff, #00bfff, #00ffff, #00fa9a, #00ff00, #adff2f, #ffff00, #ffa500, #ff4500, #ff0000, #8b0000);"></div>
+                          <div class="flex justify-between text-[8px] text-slate-400 mt-0.5 font-bold"><span id="t-topo-min">平</span><span id="t-topo-max">陡</span></div>
+                      </div>
+                  </div>
+
+                  <div class="flex flex-col items-center">
+                      <span class="text-[10px] text-white bg-slate-700 px-2 py-1 rounded-t-lg w-full text-center border-b border-slate-600">靜態螢光圖 (FL)</span>
+                      <div id="t-fl-container" class="relative w-36 h-36 md:w-44 md:h-44 rounded-b-lg border-2 border-slate-700 overflow-hidden bg-black flex items-center justify-center shadow-inner cursor-pointer" style="touch-action: none;">
+                          <canvas id="t-fl-canvas" width="200" height="200" class="absolute inset-0 w-full h-full object-cover opacity-90"></canvas>
+                          <div id="t-cross-line" class="absolute top-1/2 left-0 w-full h-0.5 bg-yellow-400 z-30 shadow-[0_0_5px_yellow] flex justify-between items-center pointer-events-none" style="transform: rotate(0deg); transform-origin: center;">
+                              <div class="w-2.5 h-2.5 bg-yellow-400 rounded-full shadow-[0_0_5px_white] -ml-1"></div>
+                              <div class="w-2.5 h-2.5 bg-yellow-400 rounded-full shadow-[0_0_5px_white] -mr-1"></div>
+                          </div>
+                          <div class="absolute w-full h-px border-t border-dashed border-white/20 z-0 pointer-events-none"></div>
+                          <div class="absolute h-full w-px border-l border-dashed border-white/20 z-0 pointer-events-none"></div>
+                          <div class="absolute w-[30%] h-[30%] rounded-full border border-white/40 border-dashed z-0 pointer-events-none"></div>
+                          <div class="absolute w-[70%] h-[70%] rounded-full border border-white/40 border-dashed z-0 pointer-events-none"></div>
+                      </div>
+                      <div class="w-full mt-3 grid grid-cols-2 gap-x-2 gap-y-1 text-[9px] text-slate-300 font-bold text-center">
+                          <span id="t-fl-center-text" class="bg-slate-800 rounded"></span><span id="t-fl-mid-text" class="bg-slate-800 rounded"></span>
+                          <span id="t-fl-edge-text" class="bg-slate-800 rounded"></span><span id="t-fl-far-text" class="bg-slate-800 rounded"></span>
+                      </div>
+                  </div>
+              </div>
+
+              <div class="w-full bg-slate-800 p-4 rounded-lg mt-2 no-print">
+                  <div class="flex justify-between items-center text-[10px] text-slate-400 font-bold mb-2">
+                      <span>橫切面觀測角度 (可直接按住圓周黃點拖拉)</span>
+                      <span id="t-angle-val" class="text-yellow-400 text-sm bg-slate-900 px-2 py-1 rounded shadow-inner">0°</span>
+                  </div>
+                  <div class="relative w-full h-24 bg-slate-950 border border-slate-700 rounded-lg overflow-hidden shadow-inner">
+                      <div class="absolute w-full top-[16%] border-t border-slate-700/50"><span class="text-[8px] text-slate-500 absolute left-1 -top-3">100μm</span></div>
+                      <div class="absolute w-full top-[58%] border-t border-slate-700/50"><span class="text-[8px] text-slate-500 absolute left-1 -top-3">50μm</span></div>
+                      <div class="absolute w-full top-[91%] border-t border-red-500/50"><span class="text-[8px] text-red-500/80 absolute left-1 -top-3">10μm Touch</span></div>
+                      <canvas id="t-cross-canvas" class="absolute inset-0 w-full h-full"></canvas>
+                  </div>
               </div>
               
               <div class="w-full mt-6 bg-slate-800 p-4 rounded-lg no-print">
-                <div class="flex justify-between text-xs text-slate-300 font-bold mb-2"><span>全軸偏緊 (Steep)</span><span class="text-cyan-400 text-base" id="toric-dynamic-val">微調偏移量: ${offset > 0 ? '+'+offset.toFixed(2) : offset.toFixed(2)} mm</span><span>全軸偏平 (Flat)</span></div>
-                <input type="range" id="toric-sim-slider" min="-0.20" max="0.20" step="0.05" value="${offset}" class="w-full mb-3 accent-cyan-500" oninput="
+                <div class="flex justify-between text-xs text-slate-300 font-bold mb-2">
+                    <span>全軸偏緊 (Steep)</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-cyan-400 text-base" id="toric-dynamic-val">微調偏移量: ${offset > 0 ? '+'+offset.toFixed(2) : offset.toFixed(2)} mm</span>
+                        <select id="t-step-select" class="bg-slate-700 text-slate-300 border border-slate-600 rounded outline-none p-0.5 text-[10px]" onchange="document.getElementById('toric-sim-slider').step = this.value;">
+                            <option value="0.01" ${oldTStep === '0.01' ? 'selected' : ''}>間距 0.01</option>
+                            <option value="0.05" ${oldTStep === '0.05' ? 'selected' : ''}>間距 0.05</option>
+                        </select>
+                    </div>
+                    <span>全軸偏平 (Flat)</span>
+                </div>
+                <input type="range" id="toric-sim-slider" min="-0.40" max="0.40" step="${oldTStep}" value="${offset}" class="w-full mb-3 accent-cyan-500" oninput="
                   const v = parseFloat(this.value);
                   document.getElementById('toric-dynamic-val').innerText = '微調偏移量: ' + (v > 0 ? '+'+v.toFixed(2) : v.toFixed(2)) + ' mm';
-                  window.updateToricVisuals(v);
+                  window.updateToricVisuals(v, parseInt(document.getElementById('t-angle-val').innerText));
                 ">
                 <button onclick="calcToric()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 rounded">✅ 將此微調同時套用至 FK / SK 處方</button>
               </div>
             </div>
           `;
-        }
-        window.updateToricVisuals(offset);
+          
+          setTimeout(() => {
+              initDraggableAngle('t-fl-container', 't-cross-line', 't-angle-val', (deg) => {
+                  window.updateToricVisuals(parseFloat(document.getElementById('toric-sim-slider').value), deg);
+              });
+              window.updateToricVisuals(offset, 0);
+          }, 10);
       } else {
         visualBox.innerHTML = '';
       }
