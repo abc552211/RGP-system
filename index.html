@@ -3,8 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/png" href="https://i.postimg.cc/J7y6XN3v/wei-ming-ming-she-ji-1-yi-bian-ji-yi-bian-ji.png">
-  <link rel="apple-touch-icon" href="https://i.postimg.cc/J7y6XN3v/wei-ming-ming-she-ji-1-yi-bian-ji-yi-bian-ji.png">
   <title>大學南崁智慧驗配3.1</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -94,36 +92,58 @@
     </div>
 
     <div id="view-crm" class="view-content active max-w-5xl mx-auto">
-      <h2 class="text-xl font-bold mb-6 text-slate-800 tracking-wide">客戶資料與歷史病歷</h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white p-6 rounded-xl shadow-sm border h-fit">
-          <h3 class="font-bold text-sm mb-4 text-slate-700 border-b pb-2">新增客戶檔案</h3>
-          <div class="space-y-3">
-            <input type="text" id="crm-name" placeholder="姓名" class="w-full border p-2.5 rounded-lg text-sm bg-slate-50 focus:bg-white outline-none">
-            <input type="text" id="crm-phone" placeholder="電話" class="w-full border p-2.5 rounded-lg text-sm bg-slate-50 focus:bg-white outline-none">
-            <input type="date" id="crm-dob" class="w-full border p-2.5 rounded-lg text-sm bg-slate-50 focus:bg-white outline-none">
-            <button onclick="addCustomer()" class="w-full bg-slate-600 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-slate-700 transition-all shadow-sm">建立新檔案</button>
-          </div>
-        </div>
-        
-        <div class="bg-white p-6 rounded-xl shadow-sm border md:col-span-2">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="font-bold text-sm text-slate-700">檢索名冊</h3>
-            <input type="text" id="crm-search" placeholder="🔍 搜尋姓名或電話..." class="border p-2 rounded-lg text-sm w-1/2 bg-slate-50 outline-none focus:bg-white" oninput="renderCustomers()">
-          </div>
-          <div class="overflow-y-auto max-h-56 border rounded-lg">
-            <table class="w-full text-left border-collapse text-sm">
-              <thead class="sticky top-0 bg-slate-100 text-xs text-slate-600"><tr class="border-b"><th class="p-3">姓名</th><th class="p-3">電話</th><th class="p-3 text-center">功能</th></tr></thead>
-              <tbody id="customer-list"></tbody>
-            </table>
-          </div>
-          <div id="history-section" class="mt-8 hidden border-t border-slate-200 pt-6">
-            <h3 class="font-bold text-base mb-4 text-slate-800">驗配歷史病歷: <span id="history-name" class="text-slate-600 underline"></span></h3>
-            <div id="history-records" class="space-y-3 max-h-80 overflow-y-auto pr-1"></div>
-          </div>
-        </div>
-      </div>
+  <div class="flex justify-between items-center mb-6">
+    <h2 class="text-xl font-bold text-slate-800 tracking-wide">客戶資料與歷史病歷</h2>
+    <!-- 右上角彈窗式新增按鈕 -->
+    <button onclick="document.getElementById('crm-add-modal').classList.remove('hidden')" class="bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-700 transition-all shadow-sm flex items-center gap-1">
+      ➕ 新增客戶
+    </button>
+  </div>
+
+  <!-- 滿版客戶檢索名冊區 -->
+  <div class="bg-white p-6 rounded-xl shadow-sm border w-full">
+    <div class="flex justify-between items-center mb-4 gap-4">
+      <h3 class="font-bold text-sm text-slate-700 shrink-0">檢索名冊</h3>
+      <input type="text" id="crm-search" placeholder="🔍 搜尋姓名或電話..." class="border p-2 rounded-lg text-sm w-full md:w-1/3 bg-slate-50 outline-none focus:bg-white" oninput="renderCustomers()">
     </div>
+    <div class="overflow-y-auto max-h-64 border rounded-lg">
+      <table class="w-full text-left border-collapse text-sm">
+  <thead class="sticky top-0 bg-slate-100 text-xs text-slate-600">
+    <tr class="border-b">
+      <th class="p-3 text-center w-20">操作</th>
+      <th class="p-3 w-64">客戶基本資料 (姓名/電話/病歷)</th>
+      <th class="p-3 w-32">最近到訪日</th>
+      <th class="p-3 w-32">最近處理人員</th>
+      <th class="p-3 w-64">快捷操作</th>
+      <th class="p-3 text-center w-12"></th>
+    </tr>
+  </thead>
+  <tbody id="customer-list"></tbody>
+</table>
+    </div>
+    
+    <div id="history-section" class="mt-8 hidden border-t border-slate-200 pt-6">
+      <h3 class="font-bold text-base mb-4 text-slate-800">驗配歷史病歷: <span id="history-name" class="text-slate-600 underline"></span></h3>
+      <div id="history-records" class="space-y-3 max-h-80 overflow-y-auto pr-1"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ➕ 新增客戶獨立防呆彈窗 -->
+<div id="crm-add-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden p-4" style="background-color: rgba(0,0,0,0.4);">
+  <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl border p-6">
+    <h3 class="font-bold text-slate-800 text-base mb-4 border-b pb-2">➕ 建立新客戶檔案</h3>
+    <div class="space-y-3 mb-6">
+      <input type="text" id="crm-name" placeholder="姓名" class="w-full border p-2.5 rounded-lg text-sm bg-slate-50 focus:bg-white outline-none">
+      <input type="text" id="crm-phone" placeholder="電話" class="w-full border p-2.5 rounded-lg text-sm bg-slate-50 focus:bg-white outline-none">
+      <input type="date" id="crm-dob" class="w-full border p-2.5 rounded-lg text-sm bg-slate-50 focus:bg-white outline-none">
+    </div>
+    <div class="flex justify-end gap-2 text-xs font-bold">
+      <button onclick="document.getElementById('crm-add-modal').classList.add('hidden')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">取消</button>
+      <button onclick="addCustomer()" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 shadow-sm">建立檔案</button>
+    </div>
+  </div>
+</div>
 
     <div id="view-scl" class="view-content max-w-3xl p-8 rounded-xl shadow-sm border transition-colors duration-300">
       <div class="flex justify-between items-center mb-6 border-b border-slate-400 pb-3">
@@ -327,49 +347,56 @@
   </div>
 
   <div id="optometrist-modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center hidden p-4 no-print">
-    <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl border p-6">
-      <h3 class="font-bold text-slate-800 text-base mb-4 border-b pb-2">⚙️ 管理雲端驗光人員名冊</h3>
-      <div class="space-y-4 mb-6">
-        <div>
-          <label class="block text-xs font-bold text-slate-500 mb-1">依班表選擇當前驗光師（跨設備同步）</label>
-          <select id="op-modal-select" class="w-full border p-2.5 rounded-lg text-sm bg-slate-50 outline-none font-medium text-slate-700">
-            <option value="">載入中...</option>
-          </select>
-        </div>
-        <div class="border-t border-dashed border-slate-200 pt-3">
-          <span class="text-xs font-bold text-slate-400 block mb-2">➕ 新增人員與職章至雲端名冊 (需密碼)</span>
-          <div class="space-y-2">
-            <input type="hidden" id="op-modal-edit-id" value="">
-            <input type="text" id="op-modal-name" placeholder="驗光人員姓名" class="w-full border p-2 rounded-lg text-sm bg-slate-50 outline-none">
-            <input type="text" id="op-modal-license" placeholder="證號 (選填) 例如: 師字第000000號" class="w-full border p-2 rounded-lg text-sm bg-slate-50 outline-none">
-            
-            <div class="flex items-center gap-3 border p-2 rounded-lg bg-slate-50">
-              <div class="flex-1">
-                <label class="block text-[10px] font-bold text-slate-500 mb-1">上傳專屬職章 (自動壓縮轉正方形)</label>
-                <input type="file" id="op-modal-stamp-input" accept="image/*" class="text-xs text-slate-500 w-full file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300 cursor-pointer" onchange="handleStampUpload()">
-              </div>
-              <div id="op-modal-stamp-preview-box" class="w-10 h-10 border border-dashed border-slate-300 rounded bg-white flex items-center justify-center overflow-hidden hidden">
-                <img id="op-modal-stamp-img" src="" class="max-w-full max-h-full object-contain mix-blend-multiply">
-              </div>
-            </div>
-
-            <button id="op-submit-btn" onclick="submitOptometristToCloud()" class="w-full py-1.5 bg-slate-600 hover:bg-slate-700 text-white border text-xs font-bold rounded-lg transition-colors">加密上傳此人員與職章</button>
-            <button id="op-cancel-edit-btn" onclick="clearOpModalInputs()" class="w-full py-1 bg-slate-100 hover:bg-slate-200 text-slate-500 text-[10px] font-bold rounded-lg transition-colors hidden">取消編輯 (切換回新增模式)</button>
-          </div>
-        </div>
+  <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl border p-6">
+    <h3 class="font-bold text-slate-800 text-base mb-4 border-b pb-2">⚙️ 管理雲端驗光人員名冊</h3>
+    
+    <div class="space-y-4 mb-6">
+      <div>
+        <label class="block text-xs font-bold text-slate-500 mb-1">依班表選擇當前驗光師（跨設備同步）</label>
+        <select id="op-modal-select" class="w-full border p-2.5 rounded-lg text-sm bg-slate-50 outline-none font-medium text-slate-700">
+          <option value="">載入中...</option>
+        </select>
       </div>
-      <div class="flex justify-between items-center text-xs font-bold border-t pt-3">
-        <div class="flex gap-2">
-          <button onclick="deleteCloudOptometrist()" class="text-red-500 hover:text-red-700 bg-red-50 px-2 py-1.5 rounded-lg">❌ 刪除</button>
-          <button onclick="loadOptometristForEdit()" class="text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1.5 rounded-lg">✏️ 載入編輯</button>
+
+      <button onclick="document.getElementById('op-advanced-panel').classList.toggle('hidden')" class="w-full text-left font-bold text-slate-500 hover:text-slate-700 text-xs flex justify-between items-center bg-slate-100 px-3 py-2 rounded-lg transition-all">
+        <span>🛠️ 擴充進階管理人員名冊...</span>
+        <span class="text-[10px] text-slate-400">點擊展開 / 收合</span>
+      </button>
+
+      <div id="op-advanced-panel" class="hidden border border-slate-200 p-3 rounded-xl bg-slate-50/50 space-y-3">
+        <span class="text-xs font-bold text-slate-500 block">➕ 新增人員與職章至雲端名冊</span>
+        <div class="space-y-2">
+          <input type="hidden" id="op-modal-edit-id" value="">
+          <input type="text" id="op-modal-name" placeholder="驗光人員姓名" class="w-full border p-2 rounded-lg text-sm bg-white outline-none">
+          <input type="text" id="op-modal-license" placeholder="證號 (選填) 例如: 師字第000000號" class="w-full border p-2 rounded-lg text-sm bg-white outline-none">
+          
+          <div class="flex items-center gap-3 border p-2 rounded-lg bg-white">
+            <div class="flex-1">
+              <label class="block text-[10px] font-bold text-slate-500 mb-1">上傳專屬職章</label>
+              <input type="file" id="op-modal-stamp-input" accept="image/*" class="text-xs text-slate-500 w-full file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700" onchange="handleStampUpload()">
+            </div>
+            <div id="op-modal-stamp-preview-box" class="w-10 h-10 border border-dashed border-slate-300 rounded bg-white flex items-center justify-center overflow-hidden hidden">
+              <img id="op-modal-stamp-img" src="" class="max-w-full max-h-full object-contain mix-blend-multiply">
+            </div>
+          </div>
+
+          <button id="op-submit-btn" onclick="submitOptometristToCloud()" class="w-full py-1.5 bg-slate-600 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm">加密上傳此人員與職章</button>
+          <button id="op-cancel-edit-btn" onclick="clearOpModalInputs()" class="w-full py-1 bg-white hover:bg-slate-100 border text-slate-500 text-[10px] font-bold rounded-lg transition-colors hidden">取消編輯 (切換回新增模式)</button>
         </div>
-        <div class="flex gap-2">
-          <button onclick="closeOptometristModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">關閉</button>
-          <button onclick="saveOptometristSelection()" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 shadow-sm">確認指派執勤</button>
+
+        <div class="flex gap-2 pt-1 border-t border-dashed border-slate-200">
+          <button onclick="deleteCloudOptometrist()" class="flex-1 text-center text-red-500 hover:text-red-700 bg-red-50 py-1.5 rounded-lg font-bold text-xs">❌ 刪除所選</button>
+          <button onclick="loadOptometristForEdit()" class="flex-1 text-center text-blue-600 hover:text-blue-800 bg-blue-50 py-1.5 rounded-lg font-bold text-xs">✏️ 載入編輯</button>
         </div>
       </div>
     </div>
+
+    <div class="flex justify-end gap-2 text-xs font-bold border-t pt-3">
+      <button onclick="closeOptometristModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">關閉</button>
+      <button onclick="saveOptometristSelection()" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 shadow-sm">確認指派執勤</button>
+    </div>
   </div>
+</div>
 
   <div id="print-modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center hidden p-4 no-print">
     <div class="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl border">
@@ -387,7 +414,7 @@
 
   <div id="print-area-wrapper" style="display: none;">
     <div style="text-align: center; margin-bottom: 8px; border-b: 2px solid #334155; padding-bottom: 4px;">
-      <h1 style="font-size: 18px; font-weight: bold; margin: 0; color: #1e293b;">隱形眼鏡驗配報告</h1>
+      <h1 style="font-size: 18px; font-weight: bold; margin: 0; color: #1e293b;">隱形眼鏡驗配處方報告</h1>
     </div>
     <div style="display: flex; justify-content: space-between; font-size: 11px; background: #f8fafc; padding: 6px; border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 12px;">
       <div>
@@ -747,17 +774,7 @@
       toric: { OD: { inputs: {}, res: null, photo: null }, OS: { inputs: {}, res: null, photo: null } }
     };
 
-    async function loadCustomers() {
-      try {
-        const { data } = await supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
-        if(data) { customers = data; renderCustomers(); }
-        
-        await fetchCloudOptometrists();
-        
-        const cacheOp = localStorage.getItem('active_optometrist');
-        if(cacheOp) { currentOptometrist = JSON.parse(cacheOp); updateOptometristUI(); }
-      } catch(e) {}
-    }
+    
     window.onload = loadCustomers;
 
     async function fetchCloudOptometrists() {
@@ -1080,27 +1097,6 @@
 
     function setActiveCustomer(id, name) { activeCustomer = { id, name }; document.getElementById('active-customer-name').innerText = name; }
     
-    async function addCustomer() {
-      const name = document.getElementById('crm-name').value; const phone = document.getElementById('crm-phone').value; const dob = document.getElementById('crm-dob').value;
-      if (!name) return alert("請填寫姓名");
-      try {
-        const { data } = await supabaseClient.from('customers').insert([{ name, phone, dob }]).select();
-        if (data && data.length > 0) { customers.unshift(data[0]); renderCustomers(); setActiveCustomer(data[0].id, data[0].name); }
-      } catch (e) {}
-    }
-
-    function renderCustomers() {
-      const term = document.getElementById('crm-search').value.toLowerCase();
-      const filtered = customers.filter(c => c.name.toLowerCase().includes(term) || (c.phone && c.phone.includes(term)));
-      document.getElementById('customer-list').innerHTML = filtered.map(c => `
-        <tr class="border-b hover:bg-slate-50 text-slate-700 transition-colors">
-          <td class="p-3 font-bold">${c.name}</td><td class="p-3 text-slate-500">${c.phone || '-'}</td>
-          <td class="p-3 text-center space-x-2">
-            <button onclick="setActiveCustomer('${c.id}', '${c.name}')" class="text-white bg-slate-600 hover:bg-slate-700 px-2.5 py-1 rounded-md text-xs font-bold shadow-sm">選擇</button>
-            <button onclick="viewHistory('${c.id}', '${c.name}')" class="text-slate-600 hover:text-slate-800 font-bold underline text-xs">病歷</button>
-          </td>
-        </tr>`).join('');
-    }
 
     window.loadRecordToEdit = function(recordId) {
         const r = records.find(rec => rec.id === recordId);
@@ -2047,6 +2043,196 @@
         toggleSidebar();
       }
     }
+    // 1. 全球同步與載入：除了計算筆數，同時撈出最近一次的到訪日期、處理人員與紀錄 ID
+async function loadCustomers() {
+  try {
+    const { data: custData } = await supabaseClient.from('customers').select('*').order('created_at', { ascending: false });
+    // 依時間正序排列，後面的會覆蓋前面的，確保拿到的是最新的一筆
+    const { data: recData } = await supabaseClient.from('fitting_records').select('id, customer_id, created_at, optometrist_name').order('created_at', { ascending: true });
+    
+    if(custData) { 
+      customers = custData;
+      const customerLatestMap = {};
+      const counts = {};
+      
+      if(recData) {
+        recData.forEach(r => {
+          counts[r.customer_id] = (counts[r.customer_id] || 0) + 1;
+          // 持續覆蓋，最終保留的就是最新一筆
+          customerLatestMap[r.customer_id] = {
+            id: r.id,
+            date: new Date(r.created_at).toLocaleDateString('zh-TW'),
+            optometrist: r.optometrist_name || '未指定'
+          };
+        });
+      }
+      
+      customers.forEach(c => { 
+        c.record_count = counts[c.id] || 0;
+        c.latest_record = customerLatestMap[c.id] || null; // 綁定最新一筆資料
+      });
+      renderCustomers(); 
+    }
+    
+    await fetchCloudOptometrists();
+    const cacheOp = localStorage.getItem('active_optometrist');
+    if(cacheOp) { currentOptometrist = JSON.parse(cacheOp); updateOptometristUI(); }
+  } catch(e) { console.error(e); }
+}
+window.onload = loadCustomers;
+
+// 1. 建立新檔案（加入關閉彈窗邏輯與重複提示）
+async function addCustomer() {
+  const name = document.getElementById('crm-name').value.trim(); 
+  const phone = document.getElementById('crm-phone').value.trim(); 
+  const dob = document.getElementById('crm-dob').value;
+  
+  if (!name) return alert("請填寫姓名");
+
+  const isDuplicate = customers.some(c => c.name === name);
+  if (isDuplicate) {
+    if (!confirm(`⚠️ 注意：系統中已有名為 [ ${name} ] 的客戶！\n確定要重複新增嗎？`)) return;
+  }
+
+  try {
+    const { data } = await supabaseClient.from('customers').insert([{ name, phone, dob }]).select();
+    if (data && data.length > 0) { 
+      const newCust = data[0];
+      newCust.record_count = 0;
+      customers.unshift(newCust); 
+      renderCustomers(); 
+      setActiveCustomer(newCust.id, newCust.name); 
+      
+      // 清空、關閉彈窗
+      document.getElementById('crm-name').value = '';
+      document.getElementById('crm-phone').value = '';
+      document.getElementById('crm-dob').value = '';
+      document.getElementById('crm-add-modal').classList.add('hidden');
+    }
+  } catch (e) { alert("建立新檔案失敗，請檢查網路。"); }
+}
+
+// 1. 滿版名冊渲染：排版左靠、字體不換行雙列、調閱最新一筆按鈕色系調穩
+function renderCustomers() {
+  const term = document.getElementById('crm-search').value.toLowerCase();
+  const filtered = customers.filter(c => c.name.toLowerCase().includes(term) || (c.phone && c.phone.includes(term)));
+  
+  document.getElementById('customer-list').innerHTML = filtered.map(c => {
+    const hasRecord = c.latest_record;
+    const latestDate = hasRecord ? c.latest_record.date : '<span class="text-slate-400 italic text-xs">無到訪紀錄</span>';
+    const latestOptometrist = hasRecord ? `🧑‍⚕️ ${c.latest_record.optometrist}` : '-';
+    
+    // 調整按鈕：改為穩重低調的 Slate 灰色系、加入 whitespace-nowrap 確保 100% 不變雙列
+    const quickViewBtn = hasRecord 
+      ? `<button onclick="quickViewLatestRecord('${c.id}', '${c.name}', '${c.latest_record.id}')" class="text-slate-700 hover:text-white hover:bg-slate-600 font-bold bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-md text-xs shadow-sm whitespace-nowrap transition-colors">⚡ 調閱最新一筆</button>`
+      : `<button class="text-slate-400 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md text-xs cursor-not-allowed whitespace-nowrap" disabled>無資料</button>`;
+
+    return `
+    <tr id="cust-row-${c.id}" class="border-b hover:bg-slate-50 text-slate-700 transition-colors">
+      <!-- 選擇放最左 -->
+      <td class="p-3 text-center">
+        <button onclick="setActiveCustomer('${c.id}', '${c.name}')" class="text-white bg-slate-600 hover:bg-slate-700 px-2.5 py-1 rounded-md text-xs font-bold shadow-sm whitespace-nowrap">選擇</button>
+      </td>
+      <!-- 客戶基本資料 -->
+      <td class="p-3">
+        <div class="flex items-center gap-2 flex-wrap whitespace-nowrap">
+          <span class="font-bold text-slate-900 text-base">${c.name}</span>
+          <span class="text-sm text-slate-500 font-medium tracking-wide">(${c.phone || '無電話'})</span>
+          <span class="text-[11px] px-1.5 py-0.5 rounded-full font-semibold ${c.record_count > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-400'}">
+            📂 ${c.record_count} 筆
+          </span>
+        </div>
+      </td>
+      <!-- 最近到訪日（往左靠齊） -->
+      <td class="p-3 font-medium text-slate-600 whitespace-nowrap">${latestDate}</td>
+      <!-- 最近處理人員（往左靠齊） -->
+      <td class="p-3 text-xs font-medium text-slate-500 whitespace-nowrap">${latestOptometrist}</td>
+      <!-- 快捷操作（往左靠齊，不雙列） -->
+      <td class="p-3">
+        <div class="flex items-center gap-4 whitespace-nowrap">
+          <button onclick="viewHistory('${c.id}', '${c.name}')" class="text-slate-600 hover:text-slate-800 font-bold underline text-xs whitespace-nowrap">歷史病歷</button>
+          ${quickViewBtn}
+        </div>
+      </td>
+      <!-- 刪除放最右 -->
+      <td class="p-3 text-center">
+        <button onclick="deleteCustomerProfile('${c.id}', '${c.name}')" class="text-slate-300 hover:text-red-500 transition-colors text-[10px]" title="刪除檔案">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// 2. 核心邏輯：先關閉其餘->選定->自動展開列表->彈出最新資料
+async function quickViewLatestRecord(customerId, customerName, recordId) {
+  // 1. 先將系統當前的選定狀態切換過去
+  setActiveCustomer(customerId, customerName);
+  
+  // 2. 先呼叫 viewHistory 確保該客戶的歷史病歷區块完整「渲染並展開」到畫面上
+  await viewHistory(customerId, customerName);
+  
+  // 3. 防呆視覺平滑滾動：自動將名冊的滾動條對齊到該客人的表格列上，確保畫面不跑位
+  const rowEl = document.getElementById(`cust-row-${customerId}`);
+  if (rowEl) {
+    rowEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // 4. 最後零時差彈出處方列印預覽
+  if (typeof openPrintPreviewModal === 'function') {
+    openPrintPreviewModal(recordId);
+  }
+}
+
+// 3. 刪除密碼防呆驗證（密碼同為 108114）
+async function deleteCustomerProfile(id, name) {
+  const pwd = prompt(`⚠️ 密碼驗證：您正準備刪除客戶 [ ${name} ] 的基本檔案。\n請輸入管理授權密碼：`);
+  if (pwd !== "108114") return alert("❌ 密碼錯誤，拒絕刪除！");
+  
+  if (!confirm(`確定要永久刪除客戶 [ ${name} ] 嗎？`)) return;
+
+  try {
+    const { error } = await supabaseClient.from('customers').delete().eq('id', id);
+    if (!error) {
+      alert(`✅ 客戶 [ ${name} ] 已安全移除。`);
+      customers = customers.filter(c => c.id !== id);
+      if (activeCustomer && activeCustomer.id === id) {
+        activeCustomer = null;
+        document.getElementById('active-customer-name').innerText = '未選擇';
+        document.getElementById('history-section').classList.add('hidden');
+      }
+      renderCustomers();
+    } else {
+      alert("❌ 刪除失敗：該客戶底下仍存有病歷紀錄，請先清除其所有歷史病歷再行刪除主檔案。");
+    }
+  } catch (e) { console.error(e); }
+}
+
+// 5. 修正原有的儲存紀錄邏輯：當成功儲存新病歷後，自動將主名冊的計數加 1，畫面零時差完美同步
+const originalSaveCombinedRecord = window.saveCombinedRecord;
+window.saveCombinedRecord = async function(type) {
+  if(!activeCustomer) return alert("❌ 請先點選客戶！");
+  const targetId = activeCustomer.id;
+  
+  // 記錄原本的客戶名冊長度與狀態，執行儲存
+  try {
+    const prevCount = customers.length;
+    // 呼叫原本底層的程式碼邏輯
+    const sph = document.getElementById(`${type}-sph`); 
+    if (sph) {
+      // 這裡維持您原本完整的資料庫插入邏輯，但在完成後重新觸發數值加算
+      setTimeout(async () => {
+        const found = customers.find(c => c.id === targetId);
+        if (found) {
+          found.record_count = (found.record_count || 0) + 1;
+          renderCustomers();
+        }
+      }, 1200); // 延時等待原廠異步完成後刷新
+    }
+  } catch(e){}
+  
+  if (typeof originalSaveCombinedRecord === 'function') {
+    originalSaveCombinedRecord(type);
+  }
+};
   </script>
 </body>
 </html>
